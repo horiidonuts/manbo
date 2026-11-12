@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Manbo ---
+# The RPM spec is source, not a PyInstaller spec (ignored by *.spec above)
+!packaging/manbo.spec
+
+# Sound files are licensed for personal use only — bring your own (see data/sounds/README.md)
+data/sounds/*
+!data/sounds/README.md

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- base tile with a little 3D lip -->
+  <rect x="8" y="14" width="112" height="106" rx="28" fill="#9D8189"/>
+  <rect x="8" y="8" width="112" height="106" rx="28" fill="#F4ACB7"/>
+  <!-- clock face -->
+  <circle cx="64" cy="64" r="38" fill="#9D8189" opacity="0.25"/>
+  <circle cx="64" cy="61" r="38" fill="#FFE5D9"/>
+  <!-- hour ticks -->
+  <g fill="#9D8189">
+    <rect x="61" y="28" width="6" height="10" rx="3"/>
+    <rect x="61" y="84" width="6" height="10" rx="3"/>
+    <rect x="31" y="58" width="10" height="6" rx="3"/>
+    <rect x="87" y="58" width="10" height="6" rx="3"/>
+  </g>
+  <!-- hands -->
+  <g stroke="#7E6770" stroke-width="6" stroke-linecap="round" fill="none">
+    <line x1="64" y1="61" x2="64" y2="41"/>
+    <line x1="64" y1="61" x2="79" y2="70"/>
+  </g>
+  <circle cx="64" cy="61" r="5" fill="#7E6770"/>
+</svg>

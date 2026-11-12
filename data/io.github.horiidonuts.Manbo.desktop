@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Manbo
+GenericName=Pomodoro Timer
+Comment=A tiny pastel Pomodoro timer
+Exec=manbo
+Icon=io.github.horiidonuts.Manbo
+Terminal=false
+Type=Application
+Categories=Utility;Clock;GTK;
+Keywords=pomodoro;timer;focus;productivity;
+StartupNotify=true

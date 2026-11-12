@@ -1,0 +1,74 @@
+from pathlib import Path
+
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk
+
+from . import APP_ID, APP_NAME, VERSION
+from .preferences import PreferencesDialog
+from .settings import Settings
+from .sounds import Sounds
+from .themes import build_css
+from .window import ManboWindow
+
+
+class ManboApplication(Adw.Application):
+    def __init__(self):
+        super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
+        self.settings = None
+        self.sounds = None
+
+    def do_startup(self):
+        Adw.Application.do_startup(self)
+        GLib.set_application_name(APP_NAME)
+        # Pastel palettes are designed for light mode only.
+        Adw.StyleManager.get_default().set_color_scheme(Adw.ColorScheme.FORCE_LIGHT)
+
+        display = Gdk.Display.get_default()
+        dev_icons = Path(__file__).resolve().parent.parent / "data" / "icons"
+        if dev_icons.is_dir():  # running from the source tree
+            Gtk.IconTheme.get_for_display(display).add_search_path(str(dev_icons))
+        Gtk.Window.set_default_icon_name(APP_ID)
+
+        provider = Gtk.CssProvider()
+        provider.load_from_string(build_css())
+        Gtk.StyleContext.add_provider_for_display(
+            display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        self.settings = Settings()
+        self.sounds = Sounds()
+
+        for name, callback, accels in (
+            ("preferences", self._on_preferences, ["<Control>comma"]),
+            ("about", self._on_about, []),
+            ("quit", lambda *_: self.quit(), ["<Control>q"]),
+        ):
+            action = Gio.SimpleAction.new(name, None)
+            action.connect("activate", callback)
+            self.add_action(action)
+            if accels:
+                self.set_accels_for_action(f"app.{name}", accels)
+
+    def do_shutdown(self):
+        if self.sounds is not None:
+            self.sounds.shutdown()
+        Adw.Application.do_shutdown(self)
+
+    def do_activate(self):
+        window = self.props.active_window or ManboWindow(self, self.settings)
+        window.present()
+
+    def _on_preferences(self, *_):
+        window = self.props.active_window
+        PreferencesDialog(self.settings, preview_chime=window.play_chime).present(window)
+
+    def _on_about(self, *_):
+        Adw.AboutDialog(
+            application_name=APP_NAME,
+            application_icon=APP_ID,
+            version=VERSION,
+            comments="A tiny pastel Pomodoro timer",
+        ).present(self.props.active_window)
+
+
+def main(argv=None):
+    return ManboApplication().run(argv)
