@@ -1,6 +1,6 @@
 Name:           manbo
 Version:        0.1.0
-Release:        5%{?dist}
+Release:        6%{?dist}
 Summary:        A tiny pastel Pomodoro timer
 License:        MIT
 URL:            https://github.com/horiidonuts/manbo
@@ -53,6 +53,10 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/icons/hicolor/scalable/apps/%{app_id}.svg
 
 %changelog
+* Fri Nov 13 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.1.0-6
+- Send the session-finished notification as urgent so it gets through
+  Do Not Disturb; withdraw it when the window is focused again
+
 * Thu Nov 12 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.1.0-5
 - Fix clicks starting softened: play effects without clock sync
 

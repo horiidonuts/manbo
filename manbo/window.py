@@ -43,7 +43,7 @@ class ManboWindow(Adw.ApplicationWindow):
         self.timer.connect("changed", lambda *_: self._sync())
         self.timer.connect("finished", self._on_finished)
         # keep the audio device awake while the user can click (window focused)
-        self.connect("notify::is-active", lambda *_: self.sounds.keep_awake("focus", self.is_active()))
+        self.connect("notify::is-active", self._on_active_changed)
         settings.connect("changed", self._on_settings_changed)
 
         keys = Gtk.EventControllerKey()
@@ -166,7 +166,18 @@ class ManboWindow(Adw.ApplicationWindow):
         if not self.is_active():
             note = Gio.Notification.new(NOTIFY_TEXT[finished])
             note.set_body(f"Next up: {MODE_NAMES[nxt].lower()}.")
+            # Urgent = "critical" urgency, which Do Not Disturb lets through
+            # (KDE: on by default; GNOME shows urgent ones too). The user turns
+            # DND on to focus — the end-of-session alert must still arrive.
+            note.set_priority(Gio.NotificationPriority.URGENT)
             self.get_application().send_notification("session-finished", note)
+
+    def _on_active_changed(self, *_):
+        active = self.is_active()
+        self.sounds.keep_awake("focus", active)
+        if active:
+            # critical notifications don't time out; clear it once the user is back
+            self.get_application().withdraw_notification("session-finished")
 
     def _release_ending(self):
         self._ending_hold = 0
