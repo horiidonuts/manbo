@@ -71,7 +71,7 @@ class ManboWindow(Adw.ApplicationWindow):
         header.pack_end(self.menu_button)
 
         self.wheel = ModeWheel([(m, MODE_TITLES[m]) for m in (FOCUS, SHORT, LONG)])
-        self.wheel.connect("selected", lambda _w, mode: self.timer.select(mode))
+        self.wheel.connect("selected", self._on_mode_selected)
         self.time_label = Gtk.Label(css_classes=["time-label"])
         self.dots = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER)
 
@@ -195,6 +195,13 @@ class ManboWindow(Adw.ApplicationWindow):
             level=self.settings["chime_volume"] / 100,
             start_ms=CHIME_STARTS[length],
         )
+
+    def _on_mode_selected(self, _wheel, mode):
+        # only manual switches land here; the automatic one after a session
+        # moves the wheel without emitting "selected"
+        if self.settings["button_sounds"]:
+            self.sounds.play("tab")
+        self.timer.select(mode)
 
     def _on_button_moved(self, _button, down):
         if self.settings["button_sounds"]:

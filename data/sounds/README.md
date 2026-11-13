@@ -11,9 +11,10 @@ extension + volume):
 
 | Event | File | Plays when | If missing |
 | --- | --- | --- | --- |
-| `press` | `button_press` | the button sinks (start) | silent |
-| `pop` | `button_pop_up` | the button pops up (time over, pause, reset, mode switch) | silent |
+| `press` | `button_press_2` | the button sinks (start) | silent |
+| `pop` | `button_pop_up_2` | the button pops up (time over, pause, reset, mode switch) | silent |
 | `chime` | `chime1` | a session ends | system `complete.oga` chime |
+| `tab` | `change_tab` | you switch between focus / short break / long break | silent |
 
 Supported extensions: `.ogg`, `.oga`, `.opus`, `.wav`, `.flac`, `.mp3`.
 Short, trimmed files (no leading silence) feel the snappiest.

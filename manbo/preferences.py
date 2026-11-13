@@ -41,7 +41,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
         sound = Adw.PreferencesGroup(title="Sound")
         page.add(sound)
 
-        clicks = Adw.SwitchRow(title="Button sounds", subtitle="Click when the button sinks and pops")
+        clicks = Adw.SwitchRow(title="Button sounds", subtitle="Clicks for the button and when switching modes")
         clicks.set_active(settings["button_sounds"])
         clicks.connect("notify::active", lambda row, _p: settings.set("button_sounds", row.get_active()))
         sound.add(clicks)

@@ -22,9 +22,10 @@ EXTENSIONS = (".ogg", ".oga", ".opus", ".wav", ".flac", ".mp3")
 
 # event -> (file name in data/sounds without extension, base volume 0.0 .. 1.0)
 SOUNDS = {
-    "press": ("button_press", 1.0),   # the button sinking (start)
-    "pop": ("button_pop_up", 1.0),    # the button popping up
+    "press": ("button_press_2", 1.0),  # the button sinking (start)
+    "pop": ("button_pop_up_2", 1.0),   # the button popping up
     "chime": ("chime1", 1.0),         # a session ended
+    "tab": ("change_tab", 1.0),       # the mode wheel was switched by hand
 }
 
 FALLBACKS = {
