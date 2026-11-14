@@ -14,6 +14,8 @@ orthographic 3D push button in the middle.
 - Chime when a session ends — Off / Short / Normal / Long, adjustable volume —
   plus a desktop notification while the window is in the background (it gets
   through Do Not Disturb). Sounds live in [`data/sounds/`](data/sounds/README.md)
+- Mini mode: a small always-on-top pill with the time and start/pause — opens
+  in the top-right corner, drag it anywhere (always-on-top needs KDE Plasma)
 - Optional: bring the window to the front a second before a session ends,
   without taking keyboard focus (KDE Plasma; uses a small KWin script)
 
@@ -23,6 +25,8 @@ orthographic 3D push button in the middle.
 | --- | --- |
 | <kbd>Space</kbd> / <kbd>Enter</kbd> | Start / pause |
 | <kbd>←</kbd> / <kbd>→</kbd> | Switch mode (Focus / Short break / Long break) |
+| <kbd>Ctrl</kbd>+<kbd>M</kbd> | Mini mode on / off |
+| <kbd>Esc</kbd> | Leave mini mode |
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | Preferences |
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | Quit |
 

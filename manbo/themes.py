@@ -90,6 +90,33 @@ window.manbo headerbar button {
 .dot.filled {
   background-color: currentColor;
 }
+window.manbo-mini {
+  background: none;
+}
+.mini-pill {
+  margin: 10px;
+  padding: 4px 6px 4px 18px;
+  border-radius: 21px;  /* half the pill's height; 999px leaves shadow artifacts */
+  box-shadow: 0 2px 8px alpha(black, 0.18), 0 0 0 1px alpha(black, 0.06);
+  transition: background-color 450ms ease-out, color 450ms ease-out;
+}
+.mini-pill button {
+  color: inherit;
+  min-width: 32px;
+  min-height: 32px;
+}
+.mini-mode {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  opacity: 0.8;
+}
+.mini-time {
+  font-size: 28px;
+  font-weight: 800;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.5px;
+}
 .round-action {
   min-width: 44px;
   min-height: 44px;
@@ -104,6 +131,10 @@ def build_css():
         for mode, pal in theme["modes"].items():
             rules.append(
                 f"window.manbo.theme-{key}.mode-{mode} "
+                f"{{ background-color: {pal['bg']}; color: {pal['text']}; }}"
+            )
+            rules.append(
+                f"window.manbo-mini.theme-{key}.mode-{mode} .mini-pill "
                 f"{{ background-color: {pal['bg']}; color: {pal['text']}; }}"
             )
     return "\n".join(rules)

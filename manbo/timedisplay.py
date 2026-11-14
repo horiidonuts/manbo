@@ -21,8 +21,9 @@ def _stop(offset, alpha):
 class TimeDisplay(Gtk.Box):
     __gtype_name__ = "ManboTimeDisplay"
 
-    def __init__(self):
-        super().__init__(halign=Gtk.Align.CENTER, css_classes=["time-label"])
+    def __init__(self, css_class="time-label", fade_px=FADE_PX):
+        super().__init__(halign=Gtk.Align.CENTER, css_classes=[css_class])
+        self._fade_px = fade_px
         self._slots = []   # one Gtk.Stack per character
         self._text = ""
         self._seconds = None
@@ -52,10 +53,10 @@ class TimeDisplay(Gtk.Box):
 
     def do_snapshot(self, snapshot):
         w, h = self.get_width(), self.get_height()
-        if h <= 2 * FADE_PX:
+        if h <= 2 * self._fade_px:
             Gtk.Box.do_snapshot(self, snapshot)
             return
-        edge = FADE_PX / h
+        edge = self._fade_px / h
         snapshot.push_mask(Gsk.MaskMode.ALPHA)
         snapshot.append_linear_gradient(
             Graphene.Rect().init(0, 0, w, h),

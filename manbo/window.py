@@ -3,7 +3,8 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 from . import APP_NAME
 from .modewheel import ModeWheel
 from .pushbutton import PushButton
-from .raise_window import bring_to_front
+from .kwin import bring_to_front
+from .mini import MiniWindow
 from .timedisplay import TimeDisplay
 from .sounds import CHIME_STARTS
 from .themes import palette
@@ -42,6 +43,7 @@ class ManboWindow(Adw.ApplicationWindow):
         self.sounds = app.sounds
         self._ending_hold = 0  # GLib source that ends the post-session keep-awake
         self._raised = False  # already brought to front for the current ending
+        self._mini = None     # MiniWindow, created on first use
 
         self._build_ui()
 
@@ -72,9 +74,15 @@ class ManboWindow(Adw.ApplicationWindow):
             tooltip_text="Menu",
         )
 
+        mini = Gtk.Button(
+            icon_name="manbo-mini-symbolic", tooltip_text="Mini mode (Ctrl+M)",
+            action_name="app.mini",
+        )
+
         header = Adw.HeaderBar(show_title=False)
         header.add_css_class("flat")
         header.pack_end(self.menu_button)
+        header.pack_start(mini)
 
         self.wheel = ModeWheel([(m, MODE_TITLES[m]) for m in (FOCUS, SHORT, LONG)])
         self.wheel.connect("selected", self._on_mode_selected)
@@ -160,11 +168,34 @@ class ManboWindow(Adw.ApplicationWindow):
             self.sounds.keep_awake("ending", True)  # so the chime's start isn't swallowed
         self._maybe_raise()
 
+    # -- mini mode -------------------------------------------------------------
+
+    @property
+    def mini_shown(self):
+        return self._mini is not None and self._mini.get_visible()
+
+    def enter_mini(self):
+        if self._mini is None:
+            self._mini = MiniWindow(self)
+        self._mini.present()
+        self.set_visible(False)
+
+    def leave_mini(self):
+        self.present()
+        if self._mini is not None:
+            self._mini.set_visible(False)
+
+    def toggle_mini(self):
+        if self.mini_shown:
+            self.leave_mini()
+        else:
+            self.enter_mini()
+
     def _maybe_raise(self):
         if not self.timer.running or self.timer.remaining_us > RAISE_BEFORE_END_MS * 1000:
             self._raised = False
             return
-        if self._raised or not self.settings["raise_before_end"] or self.is_active():
+        if self._raised or not self.settings["raise_before_end"] or self.is_active() or self.mini_shown:
             return
         self._raised = True
         bring_to_front(self)
@@ -178,7 +209,7 @@ class ManboWindow(Adw.ApplicationWindow):
             GLib.source_remove(self._ending_hold)
         self._ending_hold = GLib.timeout_add(KEEP_AWAKE_AFTER_END_MS, self._release_ending)
         self.play_chime()
-        if not self.is_active():
+        if not self.is_active() and not self.mini_shown:  # the always-on-top pill shows it already
             note = Gio.Notification.new(NOTIFY_TEXT[finished])
             note.set_body(f"Next up: {MODE_NAMES[nxt].lower()}.")
             # Urgent = "critical" urgency, which Do Not Disturb lets through

@@ -1,6 +1,6 @@
 Name:           manbo
 Version:        0.1.0
-Release:        11%{?dist}
+Release:        12%{?dist}
 Summary:        A tiny pastel Pomodoro timer
 License:        MIT
 URL:            https://github.com/horiidonuts/manbo
@@ -36,7 +36,7 @@ install -Dm755 bin/manbo %{buildroot}%{_bindir}/manbo
 install -d %{buildroot}%{_datadir}/manbo/manbo
 install -m644 manbo/*.py %{buildroot}%{_datadir}/manbo/manbo/
 install -d %{buildroot}%{_datadir}/manbo/data
-cp -a data/sounds %{buildroot}%{_datadir}/manbo/data/
+cp -a data/sounds data/icons %{buildroot}%{_datadir}/manbo/data/
 install -Dm644 data/%{app_id}.desktop %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 install -Dm644 data/icons/hicolor/scalable/apps/%{app_id}.svg \
     %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/%{app_id}.svg
@@ -53,6 +53,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/icons/hicolor/scalable/apps/%{app_id}.svg
 
 %changelog
+* Sun Nov 15 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.1.0-12
+- Mini mode: a small always-on-top pill (Ctrl+M)
+
 * Sun Nov 15 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.1.0-11
 - Optional: bring the window to the front a second before a session ends
 - Rolling digit animation for the clock (optional, on by default)

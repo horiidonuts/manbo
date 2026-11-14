@@ -24,7 +24,7 @@ class ManboApplication(Adw.Application):
 
         display = Gdk.Display.get_default()
         dev_icons = Path(__file__).resolve().parent.parent / "data" / "icons"
-        if dev_icons.is_dir():  # running from the source tree
+        if dev_icons.is_dir():  # source tree, or /usr/share/manbo/data/icons when installed
             Gtk.IconTheme.get_for_display(display).add_search_path(str(dev_icons))
         Gtk.Window.set_default_icon_name(APP_ID)
 
@@ -40,6 +40,7 @@ class ManboApplication(Adw.Application):
         for name, callback, accels in (
             ("preferences", self._on_preferences, ["<Control>comma"]),
             ("about", self._on_about, []),
+            ("mini", lambda *_: self._main_window().toggle_mini(), ["<Control>m"]),
             ("quit", lambda *_: self.quit(), ["<Control>q"]),
         ):
             action = Gio.SimpleAction.new(name, None)
@@ -54,11 +55,27 @@ class ManboApplication(Adw.Application):
         Adw.Application.do_shutdown(self)
 
     def do_activate(self):
-        window = self.props.active_window or ManboWindow(self, self.settings)
-        window.present()
+        window = self._main_window()
+        if window.mini_shown:
+            window._mini.present()
+        else:
+            window.present()
+
+    def _main_window(self):
+        for window in self.get_windows():
+            if isinstance(window, ManboWindow):
+                return window
+        return ManboWindow(self, self.settings)
+
+    def _full_window(self):
+        """The main window, back from mini mode if needed (dialogs need room)."""
+        window = self._main_window()
+        if window.mini_shown:
+            window.leave_mini()
+        return window
 
     def _on_preferences(self, *_):
-        window = self.props.active_window
+        window = self._full_window()
         PreferencesDialog(self.settings, preview_chime=window.play_chime).present(window)
 
     def _on_about(self, *_):
@@ -67,7 +84,7 @@ class ManboApplication(Adw.Application):
             application_icon=APP_ID,
             version=VERSION,
             comments="A tiny pastel Pomodoro timer",
-        ).present(self.props.active_window)
+        ).present(self._full_window())
 
 
 def main(argv=None):
