@@ -29,6 +29,17 @@ class PreferencesDialog(Adw.PreferencesDialog):
             "long_break_interval",
         ))
 
+        # -- window ----------------------------------------------------------
+        window = Adw.PreferencesGroup(title="Window")
+        page.add(window)
+        raise_row = Adw.SwitchRow(
+            title="Show window before time is up",
+            subtitle="Bring Manbo to the front a second before a session ends",
+        )
+        raise_row.set_active(settings["raise_before_end"])
+        raise_row.connect("notify::active", lambda row, _p: settings.set("raise_before_end", row.get_active()))
+        window.add(raise_row)
+
         # -- appearance ------------------------------------------------------
         look = Adw.PreferencesGroup(title="Appearance")
         page.add(look)
@@ -36,6 +47,13 @@ class PreferencesDialog(Adw.PreferencesDialog):
         look.add(self._combo(
             "Theme", "theme", themes, [THEMES[k]["name"] for k in themes],
         ))
+        roll = Adw.SwitchRow(
+            title="Rolling digits",
+            subtitle="Digits roll as time passes and when the timer resets",
+        )
+        roll.set_active(settings["clock_animations"])
+        roll.connect("notify::active", lambda row, _p: settings.set("clock_animations", row.get_active()))
+        look.add(roll)
 
         # -- sound -----------------------------------------------------------
         sound = Adw.PreferencesGroup(title="Sound")

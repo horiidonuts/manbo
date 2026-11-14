@@ -6,12 +6,16 @@ orthographic 3D push button in the middle.
 - Focus 25 min → short break 5 min, long break 15 min every 4 focus sessions
   (all configurable in Preferences)
 - Three pastel themes: **Blossom**, **Cotton Candy**, **Coastal**
+- Rolling digits: the clock rolls down as time passes and back up on reset
+  (can be turned off in Preferences)
 - Mode wheel at the top: click the arrows, drag, scroll or use ←/→
 - The button sinks when you start (back-out, 150 ms) and pops up when you
   pause or the session ends (soft bounce-out, 100 ms), with click sounds
 - Chime when a session ends — Off / Short / Normal / Long, adjustable volume —
-  plus a desktop notification while the window is in the background.
-  Sounds live in [`data/sounds/`](data/sounds/README.md)
+  plus a desktop notification while the window is in the background (it gets
+  through Do Not Disturb). Sounds live in [`data/sounds/`](data/sounds/README.md)
+- Optional: bring the window to the front a second before a session ends,
+  without taking keyboard focus (KDE Plasma; uses a small KWin script)
 
 ## Keyboard
 

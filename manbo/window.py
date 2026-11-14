@@ -3,6 +3,8 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 from . import APP_NAME
 from .modewheel import ModeWheel
 from .pushbutton import PushButton
+from .raise_window import bring_to_front
+from .timedisplay import TimeDisplay
 from .sounds import CHIME_STARTS
 from .themes import palette
 from .timer import FOCUS, LONG, SHORT, PomodoroTimer
@@ -15,6 +17,9 @@ MODE_NAMES = {FOCUS: "Focus", SHORT: "Short break", LONG: "Long break"}
 # the background.
 WAKE_BEFORE_END_MS = 2000
 KEEP_AWAKE_AFTER_END_MS = 9000
+# "Show window before time is up": bring the window to the front this long
+# before a session ends
+RAISE_BEFORE_END_MS = 1000
 
 NOTIFY_TEXT = {
     FOCUS: "Focus session done",
@@ -36,6 +41,7 @@ class ManboWindow(Adw.ApplicationWindow):
         self._shown_mode = None
         self.sounds = app.sounds
         self._ending_hold = 0  # GLib source that ends the post-session keep-awake
+        self._raised = False  # already brought to front for the current ending
 
         self._build_ui()
 
@@ -72,7 +78,7 @@ class ManboWindow(Adw.ApplicationWindow):
 
         self.wheel = ModeWheel([(m, MODE_TITLES[m]) for m in (FOCUS, SHORT, LONG)])
         self.wheel.connect("selected", self._on_mode_selected)
-        self.time_label = Gtk.Label(css_classes=["time-label"])
+        self.time_label = TimeDisplay()
         self.dots = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER)
 
         self.button = PushButton()
@@ -116,7 +122,7 @@ class ManboWindow(Adw.ApplicationWindow):
             self._apply_theme(theme, mode, animate)
 
         self.wheel.set_mode(mode, animate=animate)
-        self._update_time()
+        self._update_time(animate)
 
         filled = self.timer.cycle_position
         dot = self.dots.get_first_child()
@@ -143,16 +149,25 @@ class ManboWindow(Adw.ApplicationWindow):
         self.button.set_palette(pal["bg"], pal["button"], pal["text"], animate)
         self._shown_theme, self._shown_mode = theme, mode
 
-    def _update_time(self):
+    def _update_time(self, animate=True):
         secs = self.timer.remaining_seconds
-        text = f"{secs // 60:02d}:{secs % 60:02d}"
-        if self.time_label.get_label() != text:
-            self.time_label.set_label(text)
+        self.time_label.set_seconds(secs, animate and self.settings["clock_animations"])
+        text = self.time_label.text
         title = f"{text} · {MODE_NAMES[self.timer.mode]}" if self.timer.running else APP_NAME
         if self.get_title() != title:
             self.set_title(title)
         if self.timer.running and self.timer.remaining_us <= WAKE_BEFORE_END_MS * 1000:
             self.sounds.keep_awake("ending", True)  # so the chime's start isn't swallowed
+        self._maybe_raise()
+
+    def _maybe_raise(self):
+        if not self.timer.running or self.timer.remaining_us > RAISE_BEFORE_END_MS * 1000:
+            self._raised = False
+            return
+        if self._raised or not self.settings["raise_before_end"] or self.is_active():
+            return
+        self._raised = True
+        bring_to_front(self)
 
     # -- events ----------------------------------------------------------------
 

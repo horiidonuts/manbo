@@ -1,6 +1,6 @@
 Name:           manbo
 Version:        0.1.0
-Release:        9%{?dist}
+Release:        11%{?dist}
 Summary:        A tiny pastel Pomodoro timer
 License:        MIT
 URL:            https://github.com/horiidonuts/manbo
@@ -53,6 +53,10 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/icons/hicolor/scalable/apps/%{app_id}.svg
 
 %changelog
+* Sun Nov 15 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.1.0-11
+- Optional: bring the window to the front a second before a session ends
+- Rolling digit animation for the clock (optional, on by default)
+
 * Fri Nov 13 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.1.0-9
 - Play a tab sound when switching modes by hand
 - New button press and pop sounds

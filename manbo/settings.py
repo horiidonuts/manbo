@@ -12,6 +12,8 @@ DEFAULTS = {
     "button_sounds": True,
     "chime_length": "normal",
     "chime_volume": 80,
+    "raise_before_end": False,
+    "clock_animations": True,
 }
 
 # Allowed ranges for the numeric settings: (min, max)
