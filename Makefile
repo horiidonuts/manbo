@@ -25,7 +25,7 @@ SOUND_FILES = $(shell python3 packaging/used-sounds.py)
 # source tree for packaging: code, data, and just the sounds in use
 stage:
 	rm -rf $(STAGE) && mkdir -p $(STAGE)/data/sounds
-	cp -a bin manbo plasma packaging Makefile README.md LICENSE NOTICE $(STAGE)/
+	cp -a bin manbo plasma gnome packaging Makefile README.md LICENSE NOTICE $(STAGE)/
 	cp -a data/*.desktop data/*.service data/icons $(STAGE)/data/
 	cp -a data/sounds/README.md $(SOUND_FILES) $(STAGE)/data/sounds/
 	find $(STAGE) -name __pycache__ -prune -exec rm -rf {} +

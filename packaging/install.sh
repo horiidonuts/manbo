@@ -17,3 +17,6 @@ install -Dm644 "data/$APP_ID.service" "$D/usr/share/dbus-1/services/$APP_ID.serv
 # Plasma widget
 install -d "$D/usr/share/plasma/plasmoids"
 cp -a plasma/io.github.horiidonuts.manbo "$D/usr/share/plasma/plasmoids/"
+# GNOME Shell extension (top bar timer); users turn it on in Extensions
+install -d "$D/usr/share/gnome-shell/extensions"
+cp -a gnome/manbo@horiidonuts.github.io "$D/usr/share/gnome-shell/extensions/"

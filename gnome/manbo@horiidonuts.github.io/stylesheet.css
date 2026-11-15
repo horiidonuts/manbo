@@ -1,0 +1,20 @@
+.manbo-box {
+  spacing: 6px;
+}
+.manbo-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  border-width: 2px;
+  border-style: solid;
+}
+.manbo-time {
+  font-weight: bold;
+  font-feature-settings: "tnum";
+}
+.manbo-offline {
+  opacity: 0.55;
+}
+.manbo-header {
+  font-weight: bold;
+}

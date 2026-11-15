@@ -20,6 +20,10 @@ orthographic 3D push button in the middle.
   middle-click to start/pause), or a little Manbo on the desktop with the
   button, rolling clock and session dots. Right-click the desktop or panel →
   *Add Widgets…* → search "Manbo"
+- GNOME top bar (e.g. Ubuntu): a small `● 24:59` with a menu to start/pause,
+  reset, switch modes and open Manbo (GNOME 45–50). After installing, log out
+  and back in once, then turn on **Manbo** in the *Extensions* app (or run
+  `gnome-extensions enable manbo@horiidonuts.github.io`)
 - Optional: Do Not Disturb while a focus session runs (other notifications are
   held back; Manbo's own session-end alert still comes through)
 - Optional: keep running in the background when the window is closed

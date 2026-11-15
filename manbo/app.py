@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk
@@ -123,4 +124,9 @@ class ManboApplication(Adw.Application):
 
 
 def main(argv=None):
+    # No display (e.g. D-Bus activation from a session that didn't export
+    # WAYLAND_DISPLAY/DISPLAY): say so and exit instead of crashing halfway.
+    if not Gtk.init_check():
+        print("manbo: can't open a display (is WAYLAND_DISPLAY or DISPLAY set?)", file=sys.stderr)
+        return 1
     return ManboApplication().run(argv)

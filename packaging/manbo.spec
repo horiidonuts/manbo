@@ -1,6 +1,6 @@
 Name:           manbo
-Version:        0.1.0
-Release:        15%{?dist}
+Version:        0.2.0
+Release:        1%{?dist}
 Summary:        A tiny pastel Pomodoro timer
 License:        MIT AND LicenseRef-Splice-Sounds
 URL:            https://github.com/horiidonuts/manbo
@@ -19,6 +19,8 @@ Requires:       gstreamer1-plugins-good
 Recommends:     sound-theme-freedesktop
 # the Plasma widget (plasma/) talks to the app through this QML module
 Recommends:     plasma-workspace
+# ...and on GNOME there's a top bar extension (gnome/)
+Suggests:       gnome-shell
 
 %global app_id io.github.horiidonuts.Manbo
 
@@ -48,8 +50,14 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/icons/hicolor/scalable/apps/%{app_id}.svg
 %{_datadir}/dbus-1/services/%{app_id}.service
 %{_datadir}/plasma/plasmoids/io.github.horiidonuts.manbo/
+%{_datadir}/gnome-shell/extensions/manbo@horiidonuts.github.io/
 
 %changelog
+* Sun Nov 15 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.2.0-1
+- GNOME Shell extension: the timer in the top bar, with start/pause, reset,
+  modes and "Open Manbo" (GNOME 45-50)
+- Exit with a clear message when there's no display instead of crashing
+
 * Sun Nov 15 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.1.0-15
 - When a session ends the button pops first, then half a second later the
   app moves on to the next session
