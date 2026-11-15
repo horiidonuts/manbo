@@ -35,11 +35,35 @@ PlasmoidItem {
     // The whole state as JSON: GetState() once Manbo is up, then every
     // StateChanged signal. (Plasma's DBus.Properties drops some variant values.)
     property var manboState: null
+    property var pendingState: null   // the next session, shown after the handoff
     function applyState(json) {
+        let next
         try {
-            root.manboState = JSON.parse(json)
+            next = JSON.parse(json)
         } catch (e) {
             console.warn("manbo widget: bad state", json, e)
+            return
+        }
+        const prev = root.manboState
+        handoff.stop()
+        if (prev && prev.running && !next.running && prev.mode !== next.mode) {
+            // a session just ended: like the app, show it at 00:00 for a beat
+            // (the button pops), then move on to the next one
+            root.manboState = Object.assign({}, prev, {running: false, remaining: 0, endTime: 0,
+                                                       cyclePosition: next.cyclePosition})
+            root.pendingState = next
+            handoff.start()
+            return
+        }
+        root.pendingState = null
+        root.manboState = next
+    }
+    Timer {
+        id: handoff
+        interval: 500   // HANDOFF_MS in manbo/window.py
+        onTriggered: {
+            root.manboState = root.pendingState
+            root.pendingState = null
         }
     }
     function fetchState() {

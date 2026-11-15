@@ -1,0 +1,19 @@
+Manbo — licensing notice
+========================
+
+Manbo's source code (everything in this repository) is released under the
+MIT license, see LICENSE.
+
+The sound files inside Manbo's release packages (.rpm, .deb, ...) — the
+button clicks, the mode-switch tick and the session chime in
+/usr/share/manbo/data/sounds/ — are NOT covered by the MIT license.
+
+They are samples from Splice (https://splice.com), licensed to the author
+under the Splice Sounds license and used here as part of the app. They are
+not included in this repository, and they may not be extracted from the
+packages to be used or redistributed on their own (for example as sound
+effects, samples or in sample packs).
+
+To build Manbo with your own sounds, see data/sounds/README.md. Without any
+sound files the clicks are silent and the chime falls back to the system
+sound.

@@ -21,6 +21,9 @@ KEEP_AWAKE_AFTER_END_MS = 9000
 # "Show window before time is up": bring the window to the front this long
 # before a session ends
 RAISE_BEFORE_END_MS = 1000
+# When a session ends the button pops first; this long after, the wheel,
+# colors and clock move on to the next session (so it reads as two beats).
+HANDOFF_MS = 500
 
 NOTIFY_TEXT = {
     FOCUS: "Focus session done",
@@ -44,6 +47,8 @@ class ManboWindow(Adw.ApplicationWindow):
         self._ending_hold = 0  # GLib source that ends the post-session keep-awake
         self._raised = False  # already brought to front for the current ending
         self._mini = None     # MiniWindow, created on first use
+        self._handoff = 0     # GLib source: still showing the finished session at 00:00
+        self._handoff_mode = None
 
         self._build_ui()
 
@@ -98,7 +103,7 @@ class ManboWindow(Adw.ApplicationWindow):
             icon_name="view-refresh-symbolic", tooltip_text="Reset session",
             css_classes=["flat", "circular", "round-action"], focusable=False,
         )
-        reset.connect("clicked", lambda *_: self.timer.reset())
+        reset.connect("clicked", lambda *_: (self._cancel_handoff(), self.timer.reset()))
         reset.set_halign(Gtk.Align.CENTER)
 
         content = Gtk.Box(
@@ -124,8 +129,40 @@ class ManboWindow(Adw.ApplicationWindow):
 
     # -- state sync ------------------------------------------------------------
 
+    # What the UI shows. Right after a session ends that's still the finished
+    # session at 00:00 for HANDOFF_MS, then the next one.
+    @property
+    def display_mode(self):
+        return self._handoff_mode or self.timer.mode
+
+    @property
+    def display_seconds(self):
+        return 0 if self._handoff_mode else self.timer.remaining_seconds
+
+    def _start_handoff(self, finished):
+        self._cancel_handoff()
+        self._handoff_mode = finished
+        self._handoff = GLib.timeout_add(HANDOFF_MS, self._end_handoff)
+
+    def _end_handoff(self):
+        self._handoff = 0
+        self._handoff_mode = None
+        self._sync()
+        if self._mini is not None:
+            self._mini.sync()
+        return GLib.SOURCE_REMOVE
+
+    def _cancel_handoff(self):
+        """The user acted (start, switch, reset) — show the real state now."""
+        if self._handoff:
+            GLib.source_remove(self._handoff)
+            self._end_handoff()
+
     def _sync(self, animate=True):
-        mode = self.timer.mode
+        if self._handoff and self.timer.running:  # started again within the handoff
+            self._cancel_handoff()
+            return
+        mode = self.display_mode
         theme = self.settings["theme"]
         if (theme, mode) != (self._shown_theme, self._shown_mode):
             self._apply_theme(theme, mode, animate)
@@ -159,10 +196,10 @@ class ManboWindow(Adw.ApplicationWindow):
         self._shown_theme, self._shown_mode = theme, mode
 
     def _update_time(self, animate=True):
-        secs = self.timer.remaining_seconds
+        secs = self.display_seconds
         self.time_label.set_seconds(secs, animate and self.settings["clock_animations"])
         text = self.time_label.text
-        title = f"{text} · {MODE_NAMES[self.timer.mode]}" if self.timer.running else APP_NAME
+        title = f"{text} · {MODE_NAMES[self.display_mode]}" if self.timer.running else APP_NAME
         if self.get_title() != title:
             self.set_title(title)
         if self.timer.running and self.timer.remaining_us <= WAKE_BEFORE_END_MS * 1000:
@@ -212,6 +249,7 @@ class ManboWindow(Adw.ApplicationWindow):
     # -- events ----------------------------------------------------------------
 
     def _on_finished(self, _timer, finished, nxt):
+        self._start_handoff(finished)  # before the timer's "changed" re-syncs the UI
         self.button.set_down(False)
         self.sounds.keep_awake("ending", True)
         if self._ending_hold:
@@ -256,6 +294,7 @@ class ManboWindow(Adw.ApplicationWindow):
         # moves the wheel without emitting "selected"
         if self.settings["button_sounds"]:
             self.sounds.play("tab")
+        self._cancel_handoff()
         self.timer.select(mode)
 
     def _on_button_moved(self, _button, down):

@@ -77,9 +77,9 @@ class ManboService:
         self._version = 0
         self._last = {}
         info = Gio.DBusNodeInfo.new_for_xml(XML).interfaces[0]
-        self._reg_id = connection.register_object_with_closures2(
-            path, info, self._on_method, self._on_get_property, None,
-        )
+        # register_object_with_closures2 is GLib >= 2.84 (e.g. not Ubuntu 24.04)
+        register = getattr(connection, "register_object_with_closures2", None) or connection.register_object
+        self._reg_id = register(path, info, self._on_method, self._on_get_property, None)
         timer.connect("changed", lambda *_: self._on_changed())
         timer.connect("finished", self._on_finished)
         settings.connect("changed", lambda *_: self._on_changed())

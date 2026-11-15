@@ -1,0 +1,16 @@
+Package: manbo
+Version: @VERSION@
+Architecture: all
+Maintainer: horiidonuts <128475458+horiidonuts@users.noreply.github.com>
+Section: utils
+Priority: optional
+Homepage: https://github.com/horiidonuts/manbo
+Depends: python3 (>= 3.10), python3-gi, python3-gi-cairo, python3-cairo, gir1.2-gtk-4.0, gir1.2-adw-1 (>= 1.5), gir1.2-gstreamer-1.0, gir1.2-gst-plugins-base-1.0, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good
+Recommends: gstreamer1.0-pulseaudio | gstreamer1.0-pipewire, sound-theme-freedesktop
+Suggests: plasma-workspace (>= 4:6)
+Installed-Size: @SIZE@
+Description: tiny pastel Pomodoro timer
+ Manbo is a small Pomodoro timer with pastel themes and a big, squishy
+ 3D start button. Focus, short break, long break and the long break
+ interval are all configurable. Includes a mini always-on-top mode, a
+ D-Bus API and a KDE Plasma 6 widget.

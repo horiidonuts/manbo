@@ -52,19 +52,19 @@ class MiniWindow(Gtk.Window):
         self.add_controller(keys)
 
         self._timer.connect("tick", lambda *_: self._update_time())
-        self._timer.connect("changed", lambda *_: self._sync())
-        self._settings.connect("changed", lambda *_: self._sync())
+        self._timer.connect("changed", lambda *_: self.sync())
+        self._settings.connect("changed", lambda *_: self.sync())
         # keep the audio device awake while the pill is focused (button clicks)
         self.connect("notify::is-active", lambda *_: main.sounds.keep_awake("mini", self.is_active()))
         self.connect("map", lambda *_: GLib.timeout_add(PLACE_DELAY_MS, self._place))
-        self._sync(animate=False)
+        self.sync(animate=False)
 
     def _place(self):
         keep_above(TITLE, True, corner=True)
         return GLib.SOURCE_REMOVE
 
-    def _sync(self, animate=True):
-        mode = self._timer.mode
+    def sync(self, animate=True):
+        mode = self._main.display_mode   # follows the main window, incl. the end-of-session handoff
         classes = [f"theme-{self._settings['theme']}", f"mode-{mode}"]
         if classes != self._theme_classes:
             for cls in self._theme_classes:
@@ -79,7 +79,7 @@ class MiniWindow(Gtk.Window):
         self._update_time(animate)
 
     def _update_time(self, animate=True):
-        self._time.set_seconds(self._timer.remaining_seconds, animate and self._settings["clock_animations"])
+        self._time.set_seconds(self._main.display_seconds, animate and self._settings["clock_animations"])
 
     def _on_key(self, _ctrl, keyval, _keycode, state):
         if state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK):

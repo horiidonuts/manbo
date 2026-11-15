@@ -1,0 +1,17 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: manbo
+Source: https://github.com/horiidonuts/manbo
+
+Files: *
+Copyright: 2026 horiidonuts
+License: MIT
+
+Files: usr/share/manbo/data/sounds/*.wav usr/share/manbo/data/sounds/*.ogg
+Copyright: Splice sample creators
+License: Splice-Sounds
+ Licensed to the author under the Splice Sounds license and used as part
+ of this application only. Not covered by the MIT license; may not be
+ extracted or redistributed on their own. See NOTICE.
+
+License: MIT
+ See /usr/share/doc/manbo/LICENSE.

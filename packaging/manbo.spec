@@ -1,8 +1,8 @@
 Name:           manbo
 Version:        0.1.0
-Release:        14%{?dist}
+Release:        15%{?dist}
 Summary:        A tiny pastel Pomodoro timer
-License:        MIT
+License:        MIT AND LicenseRef-Splice-Sounds
 URL:            https://github.com/horiidonuts/manbo
 Source0:        %{name}-%{version}.tar.gz
 BuildArch:      noarch
@@ -34,25 +34,13 @@ interval are all configurable.
 # nothing to build
 
 %install
-install -Dm755 bin/manbo %{buildroot}%{_bindir}/manbo
-install -d %{buildroot}%{_datadir}/manbo/manbo
-install -m644 manbo/*.py %{buildroot}%{_datadir}/manbo/manbo/
-install -d %{buildroot}%{_datadir}/manbo/data
-cp -a data/sounds data/icons %{buildroot}%{_datadir}/manbo/data/
-install -Dm644 data/%{app_id}.desktop %{buildroot}%{_datadir}/applications/%{app_id}.desktop
-install -Dm644 data/icons/hicolor/scalable/apps/%{app_id}.svg \
-    %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/%{app_id}.svg
-# D-Bus activation: the widget can start Manbo when it isn't running
-install -Dm644 data/%{app_id}.service %{buildroot}%{_datadir}/dbus-1/services/%{app_id}.service
-# Plasma widget
-install -d %{buildroot}%{_datadir}/plasma/plasmoids
-cp -a plasma/io.github.horiidonuts.manbo %{buildroot}%{_datadir}/plasma/plasmoids/
+sh packaging/install.sh %{buildroot}
 
 %check
 desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 
 %files
-%license LICENSE
+%license LICENSE NOTICE
 %doc README.md
 %{_bindir}/manbo
 %{_datadir}/manbo/
@@ -62,6 +50,11 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/plasma/plasmoids/io.github.horiidonuts.manbo/
 
 %changelog
+* Sun Nov 15 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.1.0-15
+- When a session ends the button pops first, then half a second later the
+  app moves on to the next session
+- Ship only the sounds in use, with a NOTICE about their license
+
 * Sun Nov 15 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.1.0-14
 - Plasma widget: a small timer on the panel, a little Manbo on the desktop
 - D-Bus: GetState/StateChanged (JSON), Palette/CyclePosition/LongBreakInterval,
