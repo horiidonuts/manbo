@@ -14,6 +14,8 @@ DEFAULTS = {
     "chime_volume": 80,
     "raise_before_end": False,
     "clock_animations": True,
+    "dnd_during_focus": False,
+    "run_in_background": False,
 }
 
 # Allowed ranges for the numeric settings: (min, max)

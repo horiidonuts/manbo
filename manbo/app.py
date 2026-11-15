@@ -3,10 +3,13 @@ from pathlib import Path
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from . import APP_ID, APP_NAME, VERSION
+from .dnd import FocusDnd
 from .preferences import PreferencesDialog
+from .service import ManboService
 from .settings import Settings
 from .sounds import Sounds
 from .themes import build_css
+from .timer import PomodoroTimer
 from .window import ManboWindow
 
 
@@ -15,6 +18,9 @@ class ManboApplication(Adw.Application):
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
         self.settings = None
         self.sounds = None
+        self.timer = None
+        self.dnd = None
+        self.service = None
 
     def do_startup(self):
         Adw.Application.do_startup(self)
@@ -36,6 +42,11 @@ class ManboApplication(Adw.Application):
 
         self.settings = Settings()
         self.sounds = Sounds()
+        self.timer = PomodoroTimer(self.settings)
+        self.dnd = FocusDnd(self.timer, self.settings)  # before any window: see dnd.py
+        connection = self.get_dbus_connection()
+        if connection is not None:
+            self.service = ManboService(connection, self.get_dbus_object_path(), self.timer)
 
         for name, callback, accels in (
             ("preferences", self._on_preferences, ["<Control>comma"]),
@@ -50,6 +61,10 @@ class ManboApplication(Adw.Application):
                 self.set_accels_for_action(f"app.{name}", accels)
 
     def do_shutdown(self):
+        if self.dnd is not None:
+            self.dnd.shutdown()
+        if self.service is not None:
+            self.service.unregister()
         if self.sounds is not None:
             self.sounds.shutdown()
         Adw.Application.do_shutdown(self)

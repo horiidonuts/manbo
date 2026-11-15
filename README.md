@@ -16,6 +16,9 @@ orthographic 3D push button in the middle.
   through Do Not Disturb). Sounds live in [`data/sounds/`](data/sounds/README.md)
 - Mini mode: a small always-on-top pill with the time and start/pause — opens
   in the top-right corner, drag it anywhere (always-on-top needs KDE Plasma)
+- Optional: Do Not Disturb while a focus session runs (other notifications are
+  held back; Manbo's own session-end alert still comes through)
+- Optional: keep running in the background when the window is closed
 - Optional: bring the window to the front a second before a session ends,
   without taking keyboard focus (KDE Plasma; uses a small KWin script)
 
@@ -29,6 +32,21 @@ orthographic 3D push button in the middle.
 | <kbd>Esc</kbd> | Leave mini mode |
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | Preferences |
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | Quit |
+
+## D-Bus API
+
+The running app exports `io.github.horiidonuts.Manbo1` at
+`/io/github/horiidonuts/Manbo` on the bus name `io.github.horiidonuts.Manbo`,
+for widgets and scripts. Properties: `Mode`, `Running`, `Remaining`,
+`EndTime` (Unix ms), `Duration`, `CompletedSessions`, `Version` — with
+`PropertiesChanged` on every state change. Methods: `Toggle`, `Start`, `Pause`,
+`Reset`, `SelectMode(s)`. Signal: `Finished(s finished, s next)`.
+
+```sh
+gdbus call --session --dest io.github.horiidonuts.Manbo \
+    --object-path /io/github/horiidonuts/Manbo \
+    --method io.github.horiidonuts.Manbo1.Toggle
+```
 
 ## Run from source
 

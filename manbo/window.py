@@ -8,7 +8,7 @@ from .mini import MiniWindow
 from .timedisplay import TimeDisplay
 from .sounds import CHIME_STARTS
 from .themes import palette
-from .timer import FOCUS, LONG, SHORT, PomodoroTimer
+from .timer import FOCUS, LONG, SHORT
 
 MODE_TITLES = {FOCUS: "FOCUS", SHORT: "SHORT BREAK", LONG: "LONG BREAK"}
 MODE_NAMES = {FOCUS: "Focus", SHORT: "Short break", LONG: "Long break"}
@@ -37,7 +37,7 @@ class ManboWindow(Adw.ApplicationWindow):
         self.add_css_class("manbo")
 
         self.settings = settings
-        self.timer = PomodoroTimer(settings)
+        self.timer = app.timer
         self._shown_theme = None
         self._shown_mode = None
         self.sounds = app.sounds
@@ -53,6 +53,7 @@ class ManboWindow(Adw.ApplicationWindow):
         # keep the audio device awake while the user can click (window focused)
         self.connect("notify::is-active", self._on_active_changed)
         settings.connect("changed", self._on_settings_changed)
+        self.connect("close-request", self._on_close_request)
 
         keys = Gtk.EventControllerKey()
         keys.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
@@ -167,6 +168,14 @@ class ManboWindow(Adw.ApplicationWindow):
         if self.timer.running and self.timer.remaining_us <= WAKE_BEFORE_END_MS * 1000:
             self.sounds.keep_awake("ending", True)  # so the chime's start isn't swallowed
         self._maybe_raise()
+
+    def _on_close_request(self, *_):
+        if not self.settings["run_in_background"]:
+            return False  # close -> the app quits
+        # hide instead: the timer, D-Bus API and Do Not Disturb keep going;
+        # launching Manbo again brings the window back
+        self.set_visible(False)
+        return True
 
     # -- mini mode -------------------------------------------------------------
 

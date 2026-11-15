@@ -29,9 +29,23 @@ class PreferencesDialog(Adw.PreferencesDialog):
             "long_break_interval",
         ))
 
+        # -- focus -----------------------------------------------------------
+        focus = Adw.PreferencesGroup(title="Focus")
+        page.add(focus)
+        focus.add(self._switch(
+            "Do Not Disturb while focusing",
+            "Silence other notifications while a focus session runs",
+            "dnd_during_focus",
+        ))
+
         # -- window ----------------------------------------------------------
         window = Adw.PreferencesGroup(title="Window")
         page.add(window)
+        window.add(self._switch(
+            "Keep running when closed",
+            "The timer keeps going in the background; open Manbo again to bring it back",
+            "run_in_background",
+        ))
         raise_row = Adw.SwitchRow(
             title="Show window before time is up",
             subtitle="Bring Manbo to the front a second before a session ends",
@@ -96,6 +110,12 @@ class PreferencesDialog(Adw.PreferencesDialog):
         self._update_sensitivity()
 
     # -- helpers ---------------------------------------------------------------
+
+    def _switch(self, title, subtitle, key):
+        row = Adw.SwitchRow(title=title, subtitle=subtitle)
+        row.set_active(self._settings[key])
+        row.connect("notify::active", lambda r, _p: self._settings.set(key, r.get_active()))
+        return row
 
     def _spin(self, title, subtitle, key):
         lo, hi = RANGES[key]

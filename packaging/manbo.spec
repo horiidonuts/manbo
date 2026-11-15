@@ -1,6 +1,6 @@
 Name:           manbo
 Version:        0.1.0
-Release:        12%{?dist}
+Release:        13%{?dist}
 Summary:        A tiny pastel Pomodoro timer
 License:        MIT
 URL:            https://github.com/horiidonuts/manbo
@@ -53,6 +53,11 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/icons/hicolor/scalable/apps/%{app_id}.svg
 
 %changelog
+* Sun Nov 15 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.1.0-13
+- D-Bus API for widgets and scripts
+- Optional Do Not Disturb while focusing
+- Optional: keep running in the background when closed
+
 * Sun Nov 15 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.1.0-12
 - Mini mode: a small always-on-top pill (Ctrl+M)
 

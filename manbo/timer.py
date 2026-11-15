@@ -48,6 +48,11 @@ class PomodoroTimer(GObject.Object):
         return self._remaining_us
 
     @property
+    def duration_seconds(self):
+        """Full length of the current session."""
+        return self._duration_us(self.mode) // 1_000_000
+
+    @property
     def remaining_seconds(self):
         return math.ceil(self.remaining_us / 1_000_000)
 
