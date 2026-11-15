@@ -40,13 +40,9 @@ class ManboApplication(Adw.Application):
             display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
 
-        self.settings = Settings()
+        self._ensure_core()
         self.sounds = Sounds()
-        self.timer = PomodoroTimer(self.settings)
         self.dnd = FocusDnd(self.timer, self.settings)  # before any window: see dnd.py
-        connection = self.get_dbus_connection()
-        if connection is not None:
-            self.service = ManboService(connection, self.get_dbus_object_path(), self.timer)
 
         for name, callback, accels in (
             ("preferences", self._on_preferences, ["<Control>comma"]),
@@ -60,11 +56,35 @@ class ManboApplication(Adw.Application):
             if accels:
                 self.set_accels_for_action(f"app.{name}", accels)
 
+    def _ensure_core(self):
+        """Settings + timer. Needed by both D-Bus registration and startup,
+        and registration comes first."""
+        if self.timer is None:
+            self.settings = Settings()
+            self.timer = PomodoroTimer(self.settings)
+
+    def do_dbus_register(self, connection, object_path):
+        # Export the API here, before the bus name is ours: when D-Bus
+        # activation starts Manbo for a method call (e.g. from the widget),
+        # that call is delivered as soon as we own the name.
+        if not Adw.Application.do_dbus_register(self, connection, object_path):
+            return False
+        self._ensure_core()
+        self.service = ManboService(
+            connection, object_path, self.timer, self.settings,
+            keep_alive=self._main_window,  # an (unshown) window holds the app
+        )
+        return True
+
+    def do_dbus_unregister(self, connection, object_path):
+        if self.service is not None:
+            self.service.unregister()
+            self.service = None
+        Adw.Application.do_dbus_unregister(self, connection, object_path)
+
     def do_shutdown(self):
         if self.dnd is not None:
             self.dnd.shutdown()
-        if self.service is not None:
-            self.service.unregister()
         if self.sounds is not None:
             self.sounds.shutdown()
         Adw.Application.do_shutdown(self)

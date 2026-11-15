@@ -1,0 +1,19 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "horiidonuts"
+            }
+        ],
+        "Category": "Date and Time",
+        "Description": "Manbo's Pomodoro timer on your panel or desktop",
+        "Icon": "io.github.horiidonuts.Manbo",
+        "Id": "io.github.horiidonuts.manbo",
+        "License": "MIT",
+        "Name": "Manbo",
+        "Version": "0.1.0",
+        "Website": "https://github.com/horiidonuts/manbo"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

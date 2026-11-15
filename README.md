@@ -16,6 +16,10 @@ orthographic 3D push button in the middle.
   through Do Not Disturb). Sounds live in [`data/sounds/`](data/sounds/README.md)
 - Mini mode: a small always-on-top pill with the time and start/pause — opens
   in the top-right corner, drag it anywhere (always-on-top needs KDE Plasma)
+- Plasma widget: a small `● 24:59` on the panel (click for the card,
+  middle-click to start/pause), or a little Manbo on the desktop with the
+  button, rolling clock and session dots. Right-click the desktop or panel →
+  *Add Widgets…* → search "Manbo"
 - Optional: Do Not Disturb while a focus session runs (other notifications are
   held back; Manbo's own session-end alert still comes through)
 - Optional: keep running in the background when the window is closed
@@ -40,7 +44,10 @@ The running app exports `io.github.horiidonuts.Manbo1` at
 for widgets and scripts. Properties: `Mode`, `Running`, `Remaining`,
 `EndTime` (Unix ms), `Duration`, `CompletedSessions`, `Version` — with
 `PropertiesChanged` on every state change. Methods: `Toggle`, `Start`, `Pause`,
-`Reset`, `SelectMode(s)`. Signal: `Finished(s finished, s next)`.
+`Reset`, `SelectMode(s)`, `GetState() → s` (all of the above as JSON).
+Signals: `Finished(s finished, s next)`, `StateChanged(s json)`. Palette,
+`CyclePosition` and `LongBreakInterval` are there for widgets. Manbo is
+D-Bus activatable, so calling a method starts it if it isn't running.
 
 ```sh
 gdbus call --session --dest io.github.horiidonuts.Manbo \
