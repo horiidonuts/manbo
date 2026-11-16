@@ -59,6 +59,21 @@ gdbus call --session --dest io.github.horiidonuts.Manbo \
     --method io.github.horiidonuts.Manbo1.Toggle
 ```
 
+## Android
+
+Manbo for Android (Android 12+) has the same look, sounds and button. Get the
+APK from the [releases](https://github.com/horiidonuts/manbo/releases).
+
+- Keeps counting with the app closed: an ongoing countdown notification and a
+  chime + notification when the session ends ("Start short break" right from it)
+- The countdown is a Live Update (Android 16+). On Samsung phones it shows in
+  the Now Bar once *Developer options → Live notifications for all apps* is on
+- Optional Do Not Disturb while focusing (Android asks once for access)
+- Button and mode-switch sounds follow the media volume
+
+Build it with `cd android && ./gradlew assembleRelease` (needs the Android SDK;
+the sound files are copied from `data/sounds/` at build time).
+
 ## Run from source
 
 ```sh

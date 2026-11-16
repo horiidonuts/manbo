@@ -4,9 +4,10 @@ Manbo — licensing notice
 Manbo's source code (everything in this repository) is released under the
 MIT license, see LICENSE.
 
-The sound files inside Manbo's release packages (.rpm, .deb, ...) — the
-button clicks, the mode-switch tick and the session chime in
-/usr/share/manbo/data/sounds/ — are NOT covered by the MIT license.
+The sound files inside Manbo's release packages (.rpm, .deb, .apk) — the
+button clicks, the mode-switch tick and the session chime (in
+/usr/share/manbo/data/sounds/ on Linux, res/raw/ in the Android app) — are
+NOT covered by the MIT license.
 
 They are samples from Splice (https://splice.com), licensed to the author
 under the Splice Sounds license and used here as part of the app. They are
