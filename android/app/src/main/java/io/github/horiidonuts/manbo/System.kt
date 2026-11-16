@@ -56,8 +56,10 @@ class ActionReceiver : BroadcastReceiver() {
 object Notifications {
     private const val CH_TIMER = "timer"
     private const val CH_END = "session_end_quiet"
+    private const val CH_SYNC = "sync"
     private const val ID_ONGOING = 1
     const val ID_END = 2
+    const val ID_SYNC = 3
 
     fun createChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -71,6 +73,10 @@ object Notifications {
             setSound(null, null)
             enableVibration(true)
             vibrationPattern = longArrayOf(0, 120, 80, 120)
+        })
+        nm.createNotificationChannel(NotificationChannel(CH_SYNC, "PC sync", NotificationManager.IMPORTANCE_MIN).apply {
+            description = "Shown while Manbo stays connected to your PC in the background"
+            setShowBadge(false)
         })
     }
 
@@ -139,11 +145,37 @@ object Notifications {
         return n
     }
 
+    fun syncNotification(context: Context, st: SyncLink.Status): Notification {
+        val text = when (st.state) {
+            SyncLink.State.CONNECTED -> "Synced with ${st.pc}"
+            SyncLink.State.NO_PERMISSION -> "Allow \"Nearby devices\" to sync with your PC"
+            else -> "Looking for ${st.pc.ifEmpty { "your PC" }}…"
+        }
+        return NotificationCompat.Builder(context, CH_SYNC)
+            .setSmallIcon(R.drawable.ic_stat_manbo)
+            .setContentTitle(text)
+            .setOngoing(true)
+            .setSilent(true)
+            .setShowWhen(false)
+            .setCategory(Notification.CATEGORY_SERVICE)
+            .setContentIntent(openApp(context))
+            .build()
+    }
+
+    fun showSync(context: Context, st: SyncLink.Status) {
+        if (canPost(context)) NotificationManagerCompat.from(context).notify(ID_SYNC, syncNotification(context, st))
+    }
+
     fun clearSessionEnded(context: Context) = NotificationManagerCompat.from(context).cancel(ID_END)
 }
 
 object SessionEnd {
     fun onFinished(context: Context, finished: Mode, next: Mode) {
+        // synced with the PC: it plays the chime, the phone only buzzes (the screen or the notification)
+        if (SyncLink.connected) {
+            if (!AppVisibility.visible) Notifications.sessionEnded(context, finished, next)
+            return
+        }
         // The chime plays on the media volume, so it's heard in vibrate mode too.
         if (AppVisibility.visible) return Sounds.chime(context, SettingsStore.value)
         // Off screen Android 17 mutes background audio unless a foreground service plays it on

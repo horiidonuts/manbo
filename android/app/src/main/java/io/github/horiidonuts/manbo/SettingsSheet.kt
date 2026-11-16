@@ -30,7 +30,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.TextButton
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -46,8 +49,10 @@ import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsSheet(settings: Settings, ink: Color, openDndAccess: () -> Unit, onDismiss: () -> Unit) {
+fun SettingsSheet(settings: Settings, ink: Color, openDndAccess: () -> Unit, pairWithPc: () -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
+    val pairing by SyncStore.pairing.collectAsStateWithLifecycle()
+    val link by SyncLink.status.collectAsStateWithLifecycle()
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 32.dp),
@@ -72,6 +77,42 @@ fun SettingsSheet(settings: Settings, ink: Color, openDndAccess: () -> Unit, onD
                 settings.dndDuringFocus) { on ->
                 if (on && !Dnd.hasAccess(context)) openDndAccess()   // Android asks once for DND access
                 SettingsStore.update { it.copy(dndDuringFocus = on) }
+            }
+
+            Heading("PC sync")
+            val pc = pairing
+            if (pc == null) {
+                Text("Keep the timer in step with Manbo on your computer: start, pause or skip on either one. " +
+                    "On the PC open Preferences → Phone → Show code, then scan it here or with your camera app.",
+                    style = TextStyle(fontFamily = MontserratMedium, fontSize = 13.sp), color = Color.Gray)
+                FilledTonalButton(onClick = pairWithPc) { Text("Scan code") }
+            } else {
+                val state = when (link.state) {
+                    SyncLink.State.CONNECTED -> "Connected"
+                    SyncLink.State.NO_PERMISSION -> "Needs \"Nearby devices\" permission"
+                    SyncLink.State.SEARCHING -> "Looking for it… (same Wi-Fi? Manbo open there?)"
+                    else -> "Not connected"
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.weight(1f)) {
+                        Text(pc.name, style = TextStyle(fontFamily = MontserratMedium, fontSize = 16.sp))
+                        Text(state, style = TextStyle(fontFamily = MontserratMedium, fontSize = 12.sp), color = Color.Gray)
+                    }
+                    TextButton(onClick = {
+                        SyncStore.unpair()
+                        SyncLink.restart()
+                        SyncService.update(context)
+                    }) { Text("Unpair") }
+                }
+                if (link.state == SyncLink.State.NO_PERMISSION) {
+                    FilledTonalButton(onClick = pairWithPc) { Text("Allow and scan again") }
+                }
+                Toggle("Stay connected in background",
+                    "So a session started on the PC starts here too (with Do Not Disturb). Shows a quiet notification.",
+                    settings.syncInBackground) { on ->
+                    SettingsStore.update { it.copy(syncInBackground = on) }
+                    SyncService.update(context)
+                }
             }
 
             Heading("Appearance")

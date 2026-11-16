@@ -12,6 +12,14 @@
     <!-- the few seconds of session-end chime while off screen (Android mutes background audio) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- sync with Manbo on a PC: the LAN (Android 17 asks for "Nearby devices"), and staying
+         connected in the background so a session started on the PC starts here too -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Samsung: list Manbo under Live notifications so the countdown can sit in the Now Bar -->
     <uses-feature android:name="com.samsung.feature.nowbar" android:required="false" />
 
@@ -23,6 +31,8 @@
         android:supportsRtl="true">
 
         <meta-data android:name="com.samsung.android.support.ongoing_activity" android:value="true" />
+        <!-- fetch the QR scanner (Google Play services) ahead of the first "Scan code" -->
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
 
         <activity
             android:name=".MainActivity"
@@ -33,11 +43,26 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- the PC's pairing QR code, scanned with the phone's own camera app -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="manbo" android:host="pair" />
+            </intent-filter>
         </activity>
 
         <receiver android:name=".AlarmReceiver" android:exported="false" />
         <receiver android:name=".ActionReceiver" android:exported="false" />
         <service android:name=".ChimeService" android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+        <service android:name=".SyncService" android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+        <receiver android:name=".BootReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

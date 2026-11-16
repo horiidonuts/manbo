@@ -1,5 +1,5 @@
 Name:           manbo
-Version:        0.2.0
+Version:        0.4.0
 Release:        1%{?dist}
 Summary:        A tiny pastel Pomodoro timer
 License:        MIT AND LicenseRef-Splice-Sounds
@@ -11,6 +11,7 @@ BuildRequires:  desktop-file-utils
 Requires:       python3
 Requires:       python3-gobject
 Requires:       python3-cairo
+Requires:       python3-qrcode
 Requires:       gtk4
 Requires:       libadwaita
 Requires:       gstreamer1
@@ -53,6 +54,10 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/gnome-shell/extensions/manbo@horiidonuts.github.io/
 
 %changelog
+* Mon Nov 16 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.4.0-1
+- Phone sync: pair Manbo for Android with a QR code (Preferences -> Phone)
+  and the timer, its lengths and Do Not Disturb stay in step on both
+
 * Sun Nov 15 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.2.0-1
 - GNOME Shell extension: the timer in the top bar, with start/pause, reset,
   modes and "Open Manbo" (GNOME 45-50)

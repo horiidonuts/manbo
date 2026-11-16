@@ -9,6 +9,7 @@ from .preferences import PreferencesDialog
 from .service import ManboService
 from .settings import Settings
 from .sounds import Sounds
+from .sync import SyncServer
 from .themes import build_css
 from .timer import PomodoroTimer
 from .window import ManboWindow
@@ -22,6 +23,7 @@ class ManboApplication(Adw.Application):
         self.timer = None
         self.dnd = None
         self.service = None
+        self.sync = None
 
     def do_startup(self):
         Adw.Application.do_startup(self)
@@ -44,6 +46,7 @@ class ManboApplication(Adw.Application):
         self._ensure_core()
         self.sounds = Sounds()
         self.dnd = FocusDnd(self.timer, self.settings)  # before any window: see dnd.py
+        self.sync = SyncServer(self.timer, self.settings)
 
         for name, callback, accels in (
             ("preferences", self._on_preferences, ["<Control>comma"]),
@@ -84,6 +87,8 @@ class ManboApplication(Adw.Application):
         Adw.Application.do_dbus_unregister(self, connection, object_path)
 
     def do_shutdown(self):
+        if self.sync is not None:
+            self.sync.shutdown()
         if self.dnd is not None:
             self.dnd.shutdown()
         if self.sounds is not None:
@@ -112,7 +117,7 @@ class ManboApplication(Adw.Application):
 
     def _on_preferences(self, *_):
         window = self._full_window()
-        PreferencesDialog(self.settings, preview_chime=window.play_chime).present(window)
+        PreferencesDialog(self.settings, preview_chime=window.play_chime, sync=self.sync).present(window)
 
     def _on_about(self, *_):
         Adw.AboutDialog(

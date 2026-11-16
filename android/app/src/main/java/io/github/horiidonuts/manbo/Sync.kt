@@ -1,0 +1,444 @@
+package io.github.horiidonuts.manbo
+
+import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.Uri
+import android.provider.Settings as AndroidSettings
+import android.util.Base64
+import android.util.Log
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONObject
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.Socket
+import java.security.MessageDigest
+import java.security.SecureRandom
+import java.util.UUID
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
+
+// Sync with Manbo on a PC over the LAN. The PC is the server (manbo/sync.py has the protocol);
+// the phone pairs by scanning its QR code and then keeps connecting to it.
+
+private const val TAG = "ManboSync"
+const val LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"   // Android 17
+
+data class Pairing(
+    val pcId: String,
+    val name: String,
+    val key: ByteArray,
+    val port: Int,
+    val addresses: List<String>,   // from the QR code; the last one that worked comes first
+)
+
+object SyncStore {
+    private lateinit var prefs: SharedPreferences
+    private val _pairing = MutableStateFlow<Pairing?>(null)
+    val pairing: StateFlow<Pairing?> = _pairing
+
+    /** This phone's id (the `by` of its changes). */
+    lateinit var me: String
+        private set
+
+    fun init(context: Context) {
+        if (::prefs.isInitialized) return
+        prefs = context.applicationContext.getSharedPreferences("sync", Context.MODE_PRIVATE)
+        me = prefs.getString("me", null) ?: UUID.randomUUID().toString().replace("-", "").also {
+            prefs.edit().putString("me", it).apply()
+        }
+        _pairing.value = load()
+    }
+
+    private fun load(): Pairing? {
+        val id = prefs.getString("pc_id", null) ?: return null
+        return Pairing(
+            pcId = id,
+            name = prefs.getString("pc_name", "PC") ?: "PC",
+            key = Base64.decode(prefs.getString("key", "") ?: "", Base64.URL_SAFE or Base64.NO_PADDING),
+            port = prefs.getInt("port", 47250),
+            addresses = (prefs.getString("addresses", "") ?: "").split(',').filter { it.isNotBlank() },
+        )
+    }
+
+    private fun save(p: Pairing) {
+        prefs.edit()
+            .putString("pc_id", p.pcId)
+            .putString("pc_name", p.name)
+            .putString("key", Base64.encodeToString(p.key, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP))
+            .putInt("port", p.port)
+            .putString("addresses", p.addresses.joinToString(","))
+            .apply()
+        _pairing.value = p
+    }
+
+    /** A scanned manbo://pair code; null if it isn't one. */
+    fun pair(text: String): Pairing? {
+        val uri = Uri.parse(text)
+        if (uri.scheme != "manbo" || uri.host != "pair") return null
+        val p = runCatching {
+            Pairing(
+                pcId = uri.getQueryParameter("id")!!,
+                name = uri.getQueryParameter("name") ?: "PC",
+                key = Base64.decode(uri.getQueryParameter("key")!!, Base64.URL_SAFE or Base64.NO_PADDING),
+                port = uri.getQueryParameter("port")?.toInt() ?: 47250,
+                addresses = (uri.getQueryParameter("ip") ?: "").split(',').filter { it.isNotBlank() },
+            )
+        }.getOrNull() ?: return null
+        if (p.key.size < 16) return null
+        save(p)
+        return p
+    }
+
+    fun unpair() {
+        prefs.edit().remove("pc_id").remove("pc_name").remove("key").remove("port").remove("addresses").apply()
+        _pairing.value = null
+    }
+
+    /** Found the PC at [address]: try it first next time. */
+    fun worked(address: String, port: Int) {
+        val p = _pairing.value ?: return
+        if (p.addresses.firstOrNull() == address && p.port == port) return
+        save(p.copy(port = port, addresses = listOf(address) + (p.addresses - address)))
+    }
+}
+
+object SyncLink {
+    enum class State { UNPAIRED, IDLE, NO_PERMISSION, SEARCHING, CONNECTED }
+    data class Status(val state: State, val pc: String = "")
+
+    private val _status = MutableStateFlow(Status(State.IDLE))
+    val status: StateFlow<Status> = _status
+    /** Live link to the PC right now? (Then the PC plays the chime.) */
+    val connected get() = _status.value.state == State.CONNECTED
+
+    private lateinit var app: Context
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val holders = mutableSetOf<String>()
+    private var job: Job? = null
+    @Volatile private var socket: Socket? = null
+    private val wake = Channel<Unit>(Channel.CONFLATED)
+    private var watchingNetwork = false
+
+    /** [who] (the screen, the background service) wants the link up. */
+    @Synchronized
+    fun hold(context: Context, who: String) {
+        app = context.applicationContext
+        holders += who
+        watchNetwork()
+        if (job?.isActive != true) job = scope.launch { loop() } else wake.trySend(Unit)
+    }
+
+    @Synchronized
+    fun release(who: String) {
+        holders -= who
+        if (holders.isEmpty()) stop()
+    }
+
+    /** Pairing or permission changed: start over. */
+    @Synchronized
+    fun restart() {
+        if (holders.isEmpty()) return
+        stop()
+        job = scope.launch { loop() }
+    }
+
+    private fun stop() {
+        job?.cancel()
+        job = null
+        runCatching { socket?.close() }   // unblocks a read in progress
+        _status.value = Status(if (SyncStore.pairing.value == null) State.UNPAIRED else State.IDLE)
+    }
+
+    private fun watchNetwork() {
+        if (watchingNetwork) return
+        watchingNetwork = true
+        app.getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(
+            object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) { wake.trySend(Unit) }   // e.g. back on Wi-Fi
+            })
+    }
+
+    private suspend fun sleep(ms: Long) { withTimeoutOrNull(ms) { wake.receive() } }
+
+    private suspend fun loop() {
+        var backoff = 3_000L
+        while (currentCoroutineContext().isActive) {
+            val p = SyncStore.pairing.value ?: run { _status.value = Status(State.UNPAIRED); return }
+            if (ContextCompat.checkSelfPermission(app, LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) {
+                _status.value = Status(State.NO_PERMISSION, p.name)
+                sleep(60_000)
+                continue
+            }
+            if (_status.value.state != State.SEARCHING) _status.value = Status(State.SEARCHING, p.name)
+            val s = connect(p)
+            if (s == null) {
+                sleep(backoff)
+                backoff = minOf(backoff * 2, 60_000)
+                continue
+            }
+            backoff = 3_000
+            socket = s
+            try {
+                session(s, p)
+            } catch (e: Exception) {
+                if (currentCoroutineContext().isActive) Log.i(TAG, "link to ${p.name} lost: $e")
+            } finally {
+                runCatching { s.close() }
+                socket = null
+            }
+            if (currentCoroutineContext().isActive) _status.value = Status(State.SEARCHING, p.name)
+            sleep(2_000)
+        }
+    }
+
+    private fun connect(p: Pairing): Socket? {
+        for (address in p.addresses) tryConnect(address, p.port)?.let { return it }
+        val (address, port) = discover(p) ?: return null
+        return tryConnect(address, port)?.also { SyncStore.worked(address, port) }
+    }
+
+    private fun tryConnect(address: String, port: Int): Socket? = try {
+        Socket().apply {
+            connect(InetSocketAddress(address, port), 2_500)
+            tcpNoDelay = true
+            keepAlive = true
+        }.also { SyncStore.worked(address, port) }
+    } catch (e: Exception) {
+        null
+    }
+
+    /** Ask the LAN where the PC is now (its address may have changed since pairing). */
+    private fun discover(p: Pairing): Pair<String, Int>? = try {
+        DatagramSocket().use { udp ->
+            udp.broadcast = true
+            udp.soTimeout = 1_500
+            val ask = JSONObject().put("t", "find").put("id", p.pcId).toString().toByteArray()
+            udp.send(DatagramPacket(ask, ask.size, InetAddress.getByName("255.255.255.255"), 47250))
+            val buf = ByteArray(1024)
+            val packet = DatagramPacket(buf, buf.size)
+            udp.receive(packet)
+            val reply = JSONObject(String(packet.data, 0, packet.length))
+            if (reply.optString("t") == "here" && reply.optString("id") == p.pcId)
+                packet.address.hostAddress!! to reply.getInt("port") else null
+        }
+    } catch (e: Exception) {
+        null
+    }
+
+    private suspend fun session(s: Socket, p: Pairing) {
+        s.soTimeout = 10_000
+        val reader = s.getInputStream().bufferedReader()
+        val writer = s.getOutputStream().bufferedWriter()
+        fun send(o: JSONObject) = synchronized(writer) {
+            writer.write(o.toString())
+            writer.write("\n")
+            writer.flush()
+        }
+
+        // prove to each other that we hold the key from the QR code
+        val n1 = nonce()
+        send(JSONObject().put("t", "hello").put("id", p.pcId).put("phone", SyncStore.me)
+            .put("name", deviceName()).put("nonce", n1))
+        val challenge = JSONObject(reader.readLine() ?: return)
+        val n2 = challenge.getString("nonce")
+        if (challenge.optString("t") != "challenge" ||
+            !MessageDigest.isEqual(challenge.getString("proof").toByteArray(), proof(p.key, "pc", n1, n2).toByteArray())
+        ) {
+            Log.w(TAG, "${p.name} didn't prove it has the key")
+            return
+        }
+        send(JSONObject().put("t", "auth").put("proof", proof(p.key, "phone", n1, n2)))
+        s.soTimeout = 150_000   // the PC answers each ping, so silence this long means it's gone
+
+        coroutineScope {
+            // a failed write closes the socket, which ends the read below
+            val sender = launch {
+                try {
+                    combine(TimerEngine.state, SettingsStore.state) { _, _ -> }.collect { send(stateMessage()) }
+                } catch (e: Exception) {
+                    runCatching { s.close() }
+                    throw e
+                }
+            }
+            val pinger = launch {
+                try {
+                    while (isActive) {
+                        delay(60_000)
+                        send(JSONObject().put("t", "ping"))
+                    }
+                } catch (e: Exception) {
+                    runCatching { s.close() }
+                    throw e
+                }
+            }
+            try {
+                while (true) {
+                    val line = runInterruptible { reader.readLine() } ?: break
+                    val m = JSONObject(line)
+                    if (m.optString("t") == "state") withContext(Dispatchers.Main) { applyRemote(m) }
+                    if (_status.value.state != State.CONNECTED) _status.value = Status(State.CONNECTED, p.name)
+                }
+            } finally {
+                sender.cancel()
+                pinger.cancel()
+            }
+        }
+    }
+
+    // -- state -----------------------------------------------------------------------
+
+    private fun stateMessage(): JSONObject {
+        val t = TimerEngine.value
+        val s = SettingsStore.value
+        return JSONObject().put("t", "state")
+            .put("timer", JSONObject()
+                .put("mode", t.mode.key).put("running", t.running).put("endAt", if (t.running) t.endAt else 0)
+                .put("remainingMs", t.remainingMs()).put("started", t.started).put("completed", t.completed)
+                .put("stamp", t.stamp).put("by", t.by))
+            .put("durations", JSONObject()
+                .put("focus", s.focusMinutes).put("short", s.shortBreakMinutes).put("long", s.longBreakMinutes)
+                .put("interval", s.longBreakInterval).put("stamp", s.durStamp).put("by", s.durBy))
+    }
+
+    private fun newer(stamp: Long, by: String, thanStamp: Long, thanBy: String) =
+        stamp > thanStamp || (stamp == thanStamp && by > thanBy)
+
+    private fun applyRemote(m: JSONObject) {
+        m.optJSONObject("durations")?.let { d ->
+            val cur = SettingsStore.value
+            val stamp = d.getLong("stamp")
+            val by = d.getString("by")
+            if (newer(stamp, by, cur.durStamp, cur.durBy)) {
+                fun v(key: String, range: String) = d.getInt(key).coerceIn(Settings.RANGES.getValue(range))
+                SettingsStore.update {
+                    it.copy(
+                        focusMinutes = v("focus", "focusMinutes"), shortBreakMinutes = v("short", "shortBreakMinutes"),
+                        longBreakMinutes = v("long", "longBreakMinutes"), longBreakInterval = v("interval", "longBreakInterval"),
+                        durStamp = stamp, durBy = by,
+                    )
+                }
+                TimerEngine.onSettingsChanged()
+            }
+        }
+        m.optJSONObject("timer")?.let { t ->
+            val mode = Mode.entries.firstOrNull { it.key == t.optString("mode") } ?: return
+            val remote = TimerState(
+                mode = mode,
+                running = t.getBoolean("running"),
+                endAt = t.getLong("endAt"),
+                remainingMs = t.getLong("remainingMs").coerceAtLeast(0),
+                started = t.getBoolean("started"),
+                completed = t.getInt("completed").coerceAtLeast(0),
+                stamp = t.getLong("stamp"),
+                by = t.getString("by"),
+            )
+            // the PC ended the session we're both running: end it here too
+            val mine = TimerEngine.value
+            if (mine.running && !remote.running && remote.stamp == mine.endAt) TimerEngine.finishIfDue(force = true)
+            val now = TimerEngine.value
+            if (newer(remote.stamp, remote.by, now.stamp, now.by)) TimerEngine.applyRemote(remote)
+        }
+    }
+
+    // -- helpers ---------------------------------------------------------------------
+
+    private fun nonce() = ByteArray(16).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
+
+    private fun proof(key: ByteArray, who: String, n1: String, n2: String): String {
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(key, "HmacSHA256"))
+        return mac.doFinal("manbo1|$who|$n1|$n2".toByteArray()).joinToString("") { "%02x".format(it) }
+    }
+
+    private fun deviceName() =
+        AndroidSettings.Global.getString(app.contentResolver, AndroidSettings.Global.DEVICE_NAME)
+            ?: android.os.Build.MODEL
+}
+
+/** Keeps the link to the PC up while Manbo is closed, so a session started there starts here too. */
+class SyncService : Service() {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    override fun onBind(intent: Intent?) = null
+
+    override fun onCreate() {
+        super.onCreate()
+        TimerEngine.init(this)
+        Notifications.createChannels(this)
+        try {
+            startForeground(Notifications.ID_SYNC, Notifications.syncNotification(this, SyncLink.status.value),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+        } catch (e: Exception) {   // not allowed right now (started from the background)
+            Log.w(TAG, "can't run in the background: $e")
+            stopSelf()
+            return
+        }
+        SyncLink.hold(this, "service")
+        scope.launch {
+            SyncLink.status.collect { st ->
+                if (st.state == SyncLink.State.UNPAIRED) stopSelf()
+                else Notifications.showSync(this@SyncService, st)
+            }
+        }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int) = START_STICKY
+
+    override fun onDestroy() {
+        scope.cancel()
+        SyncLink.release("service")
+        super.onDestroy()
+    }
+
+    companion object {
+        /** Run the service if the phone is paired and the user wants it; stop it otherwise. */
+        fun update(context: Context) {
+            val want = SyncStore.pairing.value != null && SettingsStore.value.syncInBackground
+            val intent = Intent(context, SyncService::class.java)
+            if (!want) {
+                context.stopService(intent)
+                return
+            }
+            try {
+                ContextCompat.startForegroundService(context, intent)
+            } catch (e: Exception) {
+                Log.w(TAG, "can't start the sync service: $e")
+            }
+        }
+    }
+}
+
+/** After a reboot or an update: back to syncing, and the running session's alarm back on. */
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        TimerEngine.init(context)
+        TimerEngine.restore()
+        SyncService.update(context)
+    }
+}

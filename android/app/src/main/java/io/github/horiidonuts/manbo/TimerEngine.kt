@@ -34,7 +34,10 @@ data class TimerState(
     val remainingMs: Long = 25 * 60_000L, // while not running
     val started: Boolean = false,     // has this session been started at all?
     val completed: Int = 0,           // finished focus sessions
-    val version: Long = 0,            // +1 on every change; newest wins when syncing
+    val version: Long = 0,            // +1 on every change
+    // PC sync: when (wall clock ms) and on which device the last user action happened; newest wins
+    val stamp: Long = 0,
+    val by: String = "",
 ) {
     fun remainingMs(now: Long = System.currentTimeMillis()) =
         if (running) max(0L, endAt - now) else remainingMs
@@ -72,6 +75,8 @@ object TimerEngine {
             started = prefs.getBoolean("started", false),
             completed = prefs.getInt("completed", 0),
             version = prefs.getLong("version", 0),
+            stamp = prefs.getLong("stamp", 0),
+            by = prefs.getString("by", "") ?: "",
         )
         finishIfDue()
     }
@@ -81,25 +86,35 @@ object TimerEngine {
     // -- actions ---------------------------------------------------------------
 
     fun start() {
-        val s = value
+        val s = touch(value)
         if (s.running) return
-        set(s.copy(running = true, started = true, endAt = System.currentTimeMillis() + s.remainingMs))
+        set(s.copy(running = true, started = true, endAt = s.stamp + s.remainingMs))
     }
 
     fun pause() {
-        val s = value
+        val s = touch(value)
         if (!s.running) return
         set(s.copy(running = false, remainingMs = s.remainingMs(), endAt = 0))
     }
 
     fun toggle() = if (value.running) pause() else start()
 
-    fun reset() = set(enter(value, value.mode))
+    fun reset() = set(enter(touch(value), value.mode))
 
     /** Manually switch to [mode]: stops the timer and starts that session fresh. */
     fun select(mode: Mode) {
         if (mode == value.mode && !value.started) return
-        set(enter(value, mode))
+        set(enter(touch(value), mode))
+    }
+
+    /** Take over the PC's (newer) state. */
+    fun applyRemote(s: TimerState) = set(s.copy(version = value.version))
+
+    /** After a reboot: the alarm and the countdown notification are gone, put them back. */
+    fun restore() {
+        finishIfDue()
+        scheduleAlarm(value)
+        Notifications.updateOngoing(app, value)
     }
 
     /** Durations changed in settings: an untouched session picks up the new length. */
@@ -110,9 +125,9 @@ object TimerEngine {
     }
 
     /** Called from the alarm and whenever the app comes back: end the session if its time is up. */
-    fun finishIfDue() {
+    fun finishIfDue(force: Boolean = false) {
         val s = value
-        if (!s.running || System.currentTimeMillis() < s.endAt) return
+        if (!s.running || (!force && System.currentTimeMillis() < s.endAt)) return
         val finished = s.mode
         val completed = if (finished == Mode.FOCUS) s.completed + 1 else s.completed
         val interval = SettingsStore.value.longBreakInterval
@@ -121,7 +136,8 @@ object TimerEngine {
             completed > 0 && completed % interval == 0 -> Mode.LONG
             else -> Mode.SHORT
         }
-        set(enter(s.copy(completed = completed), next))
+        // every device ends a session the same way at the same moment, so they agree
+        set(enter(s.copy(completed = completed, stamp = s.endAt), next))
         _finished.tryEmit(Finished(finished, next))
         SessionEnd.onFinished(app, finished, next)
     }
@@ -130,6 +146,8 @@ object TimerEngine {
 
     private fun enter(s: TimerState, mode: Mode) =
         s.copy(mode = mode, running = false, started = false, endAt = 0, remainingMs = duration(mode))
+
+    private fun touch(s: TimerState) = s.copy(stamp = System.currentTimeMillis(), by = SyncStore.me)
 
     private fun set(s: TimerState, bump: Boolean = true) {
         val next = if (bump) s.copy(version = value.version + 1) else s
@@ -142,6 +160,8 @@ object TimerEngine {
             .putBoolean("started", next.started)
             .putInt("completed", next.completed)
             .putLong("version", next.version)
+            .putLong("stamp", next.stamp)
+            .putString("by", next.by)
             .apply()
         scheduleAlarm(next)
         Notifications.updateOngoing(app, next)

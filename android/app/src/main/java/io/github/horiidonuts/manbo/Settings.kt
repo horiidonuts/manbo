@@ -17,7 +17,14 @@ data class Settings(
     val chimeVolume: Int = 80,
     val rollingDigits: Boolean = true,
     val dndDuringFocus: Boolean = false,
+    val syncInBackground: Boolean = true,   // stay connected to the paired PC while closed
+    // when / on which device the durations last changed (they sync with the PC; newest wins)
+    val durStamp: Long = 0,
+    val durBy: String = "",
 ) {
+    fun sameDurations(o: Settings) = focusMinutes == o.focusMinutes && shortBreakMinutes == o.shortBreakMinutes &&
+        longBreakMinutes == o.longBreakMinutes && longBreakInterval == o.longBreakInterval
+
     fun minutes(mode: Mode) = when (mode) {
         Mode.FOCUS -> focusMinutes
         Mode.SHORT -> shortBreakMinutes
@@ -45,6 +52,7 @@ object SettingsStore {
 
     fun init(context: Context) {
         if (::prefs.isInitialized) return
+        SyncStore.init(context)
         prefs = context.applicationContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
         val d = Settings()
         _state.value = Settings(
@@ -58,11 +66,19 @@ object SettingsStore {
             chimeVolume = prefs.getInt("chime_volume", d.chimeVolume),
             rollingDigits = prefs.getBoolean("rolling_digits", d.rollingDigits),
             dndDuringFocus = prefs.getBoolean("dnd_during_focus", d.dndDuringFocus),
+            syncInBackground = prefs.getBoolean("sync_background", d.syncInBackground),
+            durStamp = prefs.getLong("durations_stamp", 0),
+            durBy = prefs.getString("durations_by", "") ?: "",
         )
     }
 
     fun update(change: (Settings) -> Settings) {
-        val s = change(_state.value)
+        val old = _state.value
+        var s = change(old)
+        // changed here (not taken over from the PC): stamp it so it wins over older changes there
+        if (!s.sameDurations(old) && s.durStamp == old.durStamp) {
+            s = s.copy(durStamp = System.currentTimeMillis(), durBy = SyncStore.me)
+        }
         _state.value = s
         prefs.edit()
             .putInt("focus_minutes", s.focusMinutes)
@@ -75,6 +91,9 @@ object SettingsStore {
             .putInt("chime_volume", s.chimeVolume)
             .putBoolean("rolling_digits", s.rollingDigits)
             .putBoolean("dnd_during_focus", s.dndDuringFocus)
+            .putBoolean("sync_background", s.syncInBackground)
+            .putLong("durations_stamp", s.durStamp)
+            .putString("durations_by", s.durBy)
             .apply()
     }
 }

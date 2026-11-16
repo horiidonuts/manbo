@@ -1,5 +1,6 @@
 from gi.repository import Adw, GLib, Gtk
 
+from .pairing import PairDialog
 from .settings import CHOICES, RANGES
 from .themes import THEMES
 
@@ -8,9 +9,10 @@ PREVIEW_DELAY_MS = 350  # wait for the slider to settle before previewing
 
 
 class PreferencesDialog(Adw.PreferencesDialog):
-    def __init__(self, settings, preview_chime=None):
+    def __init__(self, settings, preview_chime=None, sync=None):
         super().__init__(title="Preferences")
         self._settings = settings
+        self._sync = sync
         self._preview_chime = preview_chime
         self._preview_source = 0
         self.connect("closed", self._on_closed)
@@ -37,6 +39,30 @@ class PreferencesDialog(Adw.PreferencesDialog):
             "Silence other notifications while a focus session runs",
             "dnd_during_focus",
         ))
+
+        # -- phone -----------------------------------------------------------
+        if sync is not None:
+            phone = Adw.PreferencesGroup(
+                title="Phone",
+                description="Keep Manbo on your Android phone in step: start, pause or skip on "
+                            "either one. Timer lengths are shared too.",
+            )
+            page.add(phone)
+            self._phone_row = Adw.ActionRow(title="Pair a phone")
+            pair = Gtk.Button(label="Show code", valign=Gtk.Align.CENTER)
+            pair.connect("clicked", lambda *_: PairDialog(sync).present(self))
+            self._phone_row.add_suffix(pair)
+            phone.add(self._phone_row)
+            self._forget_row = Adw.ActionRow(
+                title="Forget paired phones",
+                subtitle="They stop syncing until you pair them again",
+            )
+            forget = Gtk.Button(label="Forget", valign=Gtk.Align.CENTER, css_classes=["destructive-action"])
+            forget.connect("clicked", self._on_forget)
+            self._forget_row.add_suffix(forget)
+            phone.add(self._forget_row)
+            self._peers_handler = sync.connect("peers-changed", lambda *_: self._update_phone())
+            self._update_phone()
 
         # -- window ----------------------------------------------------------
         window = Adw.PreferencesGroup(title="Window")
@@ -144,6 +170,23 @@ class PreferencesDialog(Adw.PreferencesDialog):
     def _on_closed(self, *_):
         self._cancel_preview()
         self._settings.disconnect(self._settings_handler)
+        if self._sync is not None:
+            self._sync.disconnect(self._peers_handler)
+
+    def _update_phone(self):
+        phones = self._sync.phones
+        if phones:
+            subtitle = f"Connected: {', '.join(phones)}"
+        elif self._sync.paired:
+            subtitle = "Paired, phone not connected right now"
+        else:
+            subtitle = "Scan a code with the Manbo app"
+        self._phone_row.set_subtitle(subtitle)
+        self._forget_row.set_visible(self._sync.paired)
+
+    def _on_forget(self, *_):
+        self._sync.forget()
+        self._update_phone()
 
     def _on_settings_changed(self, _settings, key):
         if key == "chime_length":

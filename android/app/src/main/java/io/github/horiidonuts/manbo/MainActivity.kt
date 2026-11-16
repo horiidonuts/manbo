@@ -2,6 +2,7 @@ package io.github.horiidonuts.manbo
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings as AndroidSettings
@@ -63,6 +64,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 
@@ -77,6 +82,65 @@ private const val HANDOFF_MS = 500L   // same beat as the desktop app
 
 class MainActivity : ComponentActivity() {
     private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    private var pendingCode: String? = null   // a scanned code, waiting for local network access
+    private val askLocalNetwork = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        SyncLink.restart()
+        val code = pendingCode.also { pendingCode = null }
+        when {
+            !granted -> toast("Manbo needs \"Nearby devices\" to find your PC")
+            code != null -> usePairingCode(code)
+            else -> scanPairingCode()
+        }
+    }
+
+    /** "Scan code": Android 17 first asks for local network access, then Google's QR scanner opens. */
+    private fun pairWithPc() {
+        if (!hasLocalNetwork()) askLocalNetwork.launch(LOCAL_NETWORK) else scanPairingCode()
+    }
+
+    private fun hasLocalNetwork() =
+        ContextCompat.checkSelfPermission(this, LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED
+
+    private fun scanPairingCode() {
+        val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()
+        GmsBarcodeScanning.getClient(this, options).startScan()
+            .addOnSuccessListener { code -> code.rawValue?.let(::usePairingCode) }
+            .addOnFailureListener {
+                // no Google Play services (or the scanner won't load): the camera app works too
+                toast("Couldn't open the scanner. Scan the code with your camera app instead.")
+            }
+    }
+
+    private fun usePairingCode(code: String) {
+        if (!hasLocalNetwork()) {
+            pendingCode = code
+            askLocalNetwork.launch(LOCAL_NETWORK)
+            return
+        }
+        if (SyncStore.pair(code) == null) return toast("That isn't a Manbo pairing code")
+        SyncLink.restart()
+        SyncService.update(this)
+    }
+
+    /** Opened from a manbo://pair link (the camera app): ask first, a web page could link here too. */
+    private fun handleLink(intent: Intent?) {
+        val code = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString ?: return
+        setIntent(Intent(this, MainActivity::class.java))   // don't ask again on rotation
+        val name = android.net.Uri.parse(code).getQueryParameter("name") ?: "this computer"
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Pair with $name?")
+            .setMessage("Manbo will keep its timer in step with Manbo on $name.")
+            .setPositiveButton("Pair") { _, _ -> usePairingCode(code) }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun toast(text: String) = android.widget.Toast.makeText(this, text, android.widget.Toast.LENGTH_LONG).show()
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleLink(intent)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,9 +151,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
             SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT))
         if (Build.VERSION.SDK_INT >= 33) askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-        setContent { ManboScreen(openDndAccess = {
-            startActivity(Intent(AndroidSettings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
-        }) }
+        setContent { ManboScreen(
+            openDndAccess = { startActivity(Intent(AndroidSettings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) },
+            pairWithPc = ::pairWithPc,
+        ) }
+        if (savedInstanceState == null) handleLink(intent)
     }
 
     override fun onStart() {
@@ -97,16 +163,19 @@ class MainActivity : ComponentActivity() {
         AppVisibility.visible = true
         TimerEngine.finishIfDue()   // time may have run out while we were away
         Notifications.clearSessionEnded(this)
+        SyncLink.hold(this, "screen")
+        SyncService.update(this)
     }
 
     override fun onStop() {
         AppVisibility.visible = false
+        SyncLink.release("screen")
         super.onStop()
     }
 }
 
 @Composable
-fun ManboScreen(openDndAccess: () -> Unit) {
+fun ManboScreen(openDndAccess: () -> Unit, pairWithPc: () -> Unit) {
     val context = LocalContext.current
     val view = LocalView.current
     val timer by TimerEngine.state.collectAsStateWithLifecycle()
@@ -206,7 +275,7 @@ fun ManboScreen(openDndAccess: () -> Unit) {
         }
     }
 
-    if (showSettings) SettingsSheet(settings, ink, openDndAccess, onDismiss = { showSettings = false })
+    if (showSettings) SettingsSheet(settings, ink, openDndAccess, pairWithPc, onDismiss = { showSettings = false })
 }
 
 @Composable

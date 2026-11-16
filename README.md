@@ -71,6 +71,22 @@ APK from the [releases](https://github.com/horiidonuts/manbo/releases).
 - Optional Do Not Disturb while focusing (Android asks once for access)
 - Button and mode-switch sounds follow the media volume
 
+### Sync with your computer
+
+Pair the phone with Manbo on your PC and the two stay in step: start, pause,
+skip or reset on either one, and Do Not Disturb follows on both. Timer lengths
+are shared too; the chime plays on the PC while they're connected.
+
+1. On the PC: *Preferences → Phone → Show code*
+2. Scan the QR code with the phone's camera, or in Manbo: *Settings → Scan code*
+3. Allow *Nearby devices* when Android asks (it's how Android 17 guards the
+   local network)
+
+Both need to be on the same network (a Tailscale address works too). The phone
+stays connected in the background with a quiet notification; turn off *Stay
+connected in background* to sync only while the app is open. Sync uses TCP and
+UDP port 47250 on the PC (Fedora's default firewall already allows it).
+
 Build it with `cd android && ./gradlew assembleRelease` (needs the Android SDK;
 the sound files are copied from `data/sounds/` at build time).
 

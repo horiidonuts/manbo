@@ -20,8 +20,8 @@ android {
         applicationId = "io.github.horiidonuts.manbo"
         minSdk = 31
         targetSdk = 37
-        versionCode = 3
-        versionName = "0.3.1"
+        versionCode = 4
+        versionName = "0.4.0"
     }
 
     signingConfigs {
@@ -37,7 +37,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
@@ -70,4 +70,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.core:core-ktx:1.19.1")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+    // "Scan code" for pairing with the PC: Google's scanner UI, no camera permission needed
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+    implementation("androidx.fragment:fragment:1.9.1")   // the scanner pulls in an old one
 }
