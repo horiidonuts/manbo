@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The sounds are looked up by name (rawId) because they may be missing from a
+     build (they're not in git, see NOTICE). Keep the resource shrinker off them. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/button_press_2,@raw/button_pop_up_2,@raw/change_tab,@raw/chime1" />
