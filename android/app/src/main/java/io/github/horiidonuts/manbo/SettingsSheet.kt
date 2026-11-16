@@ -1,6 +1,25 @@
 package io.github.horiidonuts.manbo
 
+import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +31,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -116,9 +134,57 @@ private fun Stepper(title: String, unit: String, value: Int, range: IntRange, on
             Text(title, style = TextStyle(fontFamily = MontserratMedium, fontSize = 16.sp))
             Text(unit, style = TextStyle(fontFamily = MontserratMedium, fontSize = 12.sp), color = Color.Gray)
         }
-        FilledTonalIconButton(onClick = { if (value > range.first) onChange(value - 1) }) { Text("−", fontSize = 20.sp) }
+        // read the latest value inside the repeat loop, not the one from when the press began
+        val current by rememberUpdatedState(value)
+        val change by rememberUpdatedState(onChange)
+        RepeatButton("−", enabled = value > range.first) {
+            if (current > range.first) { change(current - 1); true } else false
+        }
         Text("$value", style = TextStyle(fontFamily = MontserratBold, fontSize = 18.sp), modifier = Modifier.width(44.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        FilledTonalIconButton(onClick = { if (value < range.last) onChange(value + 1) }) { Text("+", fontSize = 20.sp) }
+        RepeatButton("+", enabled = value < range.last) {
+            if (current < range.last) { change(current + 1); true } else false
+        }
+    }
+}
+
+/**
+ * A round − / + button: tap for one step, hold to keep stepping, faster the longer it's held.
+ * [step] returns false once the end of the range is reached.
+ */
+@Composable
+private fun RepeatButton(label: String, enabled: Boolean, step: () -> Boolean) {
+    val view = LocalView.current
+    val scope = rememberCoroutineScope()
+    val doStep by rememberUpdatedState(step)
+    var pressed by remember { mutableStateOf(false) }
+    val base = MaterialTheme.colorScheme.secondaryContainer
+    Box(
+        Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(if (pressed) mix(base, Color.Black, 0.08f) else base)
+            .pointerInput(Unit) {
+                detectTapGestures(onPress = {
+                    pressed = true
+                    val repeat = scope.launch {
+                        if (!doStep()) return@launch
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        delay(400)                      // a tap is just one step
+                        var interval = 110L
+                        while (isActive && doStep()) {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            delay(interval)
+                            interval = maxOf(35L, (interval * 0.9).toLong())   // speed up while held
+                        }
+                    }
+                    tryAwaitRelease()
+                    repeat.cancel()
+                    pressed = false
+                })
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, fontSize = 20.sp, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = if (enabled) 1f else 0.38f))
     }
 }

@@ -117,8 +117,7 @@ fun ManboScreen(openDndAccess: () -> Unit) {
     var handoffMode by remember { mutableStateOf<Mode?>(null) }
     LaunchedEffect(Unit) {
         TimerEngine.finished.collect { f ->
-            handoffMode = f.finished
-            Sounds.chime(context, SettingsStore.value)
+            handoffMode = f.finished   // (the chime itself comes from SessionEnd)
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
         }
     }
@@ -135,7 +134,7 @@ fun ManboScreen(openDndAccess: () -> Unit) {
     LaunchedEffect(timer.running, timer.endAt) {
         while (timer.running) {
             now = System.currentTimeMillis()
-            if (now >= timer.endAt) TimerEngine.finishIfDue()
+            if (now >= timer.endAt && AppVisibility.visible) TimerEngine.finishIfDue()   // off screen the alarm does it
             delay(100)
         }
     }

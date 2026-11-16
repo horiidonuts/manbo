@@ -20,7 +20,7 @@ import androidx.core.content.ContextCompat
 import java.text.DateFormat
 import java.util.Date
 
-/** Is the main screen showing? (Then the screen itself chimes, no notification.) */
+/** Is the main screen showing? (Then no session-end notification, the screen shows it.) */
 object AppVisibility {
     @Volatile var visible = false
 }
@@ -34,7 +34,7 @@ fun rawId(context: Context, name: String): Int =
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         TimerEngine.init(context)
-        TimerEngine.finishIfDue()
+        TimerEngine.finishIfDue()   // off screen this starts ChimeService (exact alarms may start one)
     }
 }
 
@@ -55,7 +55,7 @@ class ActionReceiver : BroadcastReceiver() {
 
 object Notifications {
     private const val CH_TIMER = "timer"
-    private const val CH_END = "session_end"
+    private const val CH_END = "session_end_quiet"
     private const val ID_ONGOING = 1
     const val ID_END = 2
 
@@ -65,18 +65,10 @@ object Notifications {
             description = "The countdown while a session runs"
             setShowBadge(false)
         })
+        nm.deleteNotificationChannel("session_end")   // 0.3.0's channel, which played the chime itself
         nm.createNotificationChannel(NotificationChannel(CH_END, "Session finished", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "When a focus session or break is over"
-            val chime = rawId(context, "chime1")
-            if (chime != 0) {
-                setSound(
-                    Uri.parse("${ContentResolver.SCHEME_ANDROID_RESOURCE}://${context.packageName}/$chime"),
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build(),
-                )
-            }
+            description = "When a focus session or break is over (Manbo plays its chime itself)"
+            setSound(null, null)
             enableVibration(true)
             vibrationPattern = longArrayOf(0, 120, 80, 120)
         })
@@ -125,7 +117,10 @@ object Notifications {
 
     /** A session ended while the app wasn't on screen. */
     fun sessionEnded(context: Context, finished: Mode, next: Mode) {
-        if (!canPost(context)) return
+        if (canPost(context)) NotificationManagerCompat.from(context).notify(ID_END, sessionEndNotification(context, finished, next))
+    }
+
+    fun sessionEndNotification(context: Context, finished: Mode, next: Mode): Notification {
         val title = when (finished) {
             Mode.FOCUS -> "Focus session done"
             Mode.SHORT -> "Break is over"
@@ -141,7 +136,7 @@ object Notifications {
             .setContentIntent(openApp(context))
             .addAction(0, "Start ${next.label.lowercase()}", toggleAction(context))
             .build()
-        NotificationManagerCompat.from(context).notify(ID_END, n)
+        return n
     }
 
     fun clearSessionEnded(context: Context) = NotificationManagerCompat.from(context).cancel(ID_END)
@@ -149,8 +144,44 @@ object Notifications {
 
 object SessionEnd {
     fun onFinished(context: Context, finished: Mode, next: Mode) {
-        // On screen, the UI pops the button and chimes; otherwise notify (with the chime as its sound)
-        if (!AppVisibility.visible) Notifications.sessionEnded(context, finished, next)
+        // The chime plays on the media volume, so it's heard in vibrate mode too.
+        if (AppVisibility.visible) return Sounds.chime(context, SettingsStore.value)
+        // Off screen Android 17 mutes background audio unless a foreground service plays it on
+        // the alarm stream; the session-end notification (which only vibrates) is its notification.
+        try {
+            ContextCompat.startForegroundService(context, ChimeService.intent(context, finished, next))
+        } catch (e: IllegalStateException) {   // not allowed to start one right now
+            Notifications.sessionEnded(context, finished, next)
+            Sounds.chime(context, SettingsStore.value, alarm = true)
+        }
+    }
+}
+
+/** Plays the session-end chime in the foreground, then leaves its notification behind. */
+class ChimeService : android.app.Service() {
+    override fun onBind(intent: Intent?) = null
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        TimerEngine.init(this)
+        val finished = Mode.of(intent?.getStringExtra(EXTRA_FINISHED))
+        val next = Mode.of(intent?.getStringExtra(EXTRA_NEXT))
+        startForeground(
+            Notifications.ID_END, Notifications.sessionEndNotification(this, finished, next),
+            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+        )
+        Sounds.chime(this, SettingsStore.value, alarm = true)
+        Sounds.whenChimeDone {
+            stopForeground(STOP_FOREGROUND_DETACH)   // the notification stays
+            stopSelf(startId)
+        }
+        return START_NOT_STICKY
+    }
+
+    companion object {
+        private const val EXTRA_FINISHED = "finished"
+        private const val EXTRA_NEXT = "next"
+        fun intent(context: Context, finished: Mode, next: Mode) = Intent(context, ChimeService::class.java)
+            .putExtra(EXTRA_FINISHED, finished.key).putExtra(EXTRA_NEXT, next.key)
     }
 }
 
@@ -187,7 +218,6 @@ object Sounds {
     private var pool: SoundPool? = null
     private val ids = mutableMapOf<String, Int>()
     private var chime: MediaPlayer? = null
-    private var attributes: AudioAttributes? = null
 
     fun init(context: Context) {
         if (pool != null) return
@@ -195,7 +225,6 @@ object Sounds {
             .setUsage(AudioAttributes.USAGE_MEDIA)   // follows the media volume
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
-        attributes = attrs
         val p = SoundPool.Builder().setMaxStreams(4).setAudioAttributes(attrs).build()
         for ((key, name) in mapOf("press" to "button_press_2", "pop" to "button_pop_up_2", "tab" to "change_tab")) {
             val id = rawId(context, name)
@@ -209,18 +238,43 @@ object Sounds {
         pool?.play(id, 1f, 1f, 1, 0, 1f)
     }
 
-    fun chime(context: Context, settings: Settings) {
+    private val waiters = mutableListOf<() -> Unit>()
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /** Run [done] once the chime has finished (right away if none is playing; at most ~9 s later). */
+    fun whenChimeDone(done: () -> Unit) {
+        if (chime == null) return done()
+        var called = false
+        val once = { if (!called) { called = true; done() } }
+        waiters += once
+        main.postDelayed(once, 9_000)
+    }
+
+    private fun chimeEnded(player: MediaPlayer) {
+        player.release()
+        if (chime === player) chime = null
+        if (chime == null) waiters.toList().also { waiters.clear() }.forEach { it() }
+    }
+
+    /**
+     * [alarm]: play on the alarm stream. Off screen that's the only audio Android 17 lets an
+     * exact-alarm app's background-started service play (and it rings in vibrate mode / DND).
+     */
+    fun chime(context: Context, settings: Settings, alarm: Boolean = false) {
         val start = Settings.CHIME_STARTS[settings.chimeLength] ?: return  // "off"
         val res = rawId(context, "chime1")
         if (res == 0) return
-        chime?.release()
+        chime?.let { chimeEnded(it) }
         val level = (settings.chimeVolume / 100f).let { it * it }   // perceptual, like the desktop
-        val attrs = attributes ?: AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build()
+        val attrs = AudioAttributes.Builder()
+            .setUsage(if (alarm) AudioAttributes.USAGE_ALARM else AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
         val session = context.getSystemService(android.media.AudioManager::class.java).generateAudioSessionId()
         chime = MediaPlayer.create(context, res, attrs, session)?.apply {
             setVolume(level, level)
             seekTo(start)
-            setOnCompletionListener { it.release(); if (chime === it) chime = null }
+            setOnCompletionListener { chimeEnded(it) }
             start()
         }
     }

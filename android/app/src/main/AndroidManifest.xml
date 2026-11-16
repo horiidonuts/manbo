@@ -9,6 +9,9 @@
     <!-- optional Do Not Disturb while focusing (the user grants access in settings) -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- the few seconds of session-end chime while off screen (Android mutes background audio) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <!-- Samsung: list Manbo under Live notifications so the countdown can sit in the Now Bar -->
     <uses-feature android:name="com.samsung.feature.nowbar" android:required="false" />
 
@@ -34,5 +37,7 @@
 
         <receiver android:name=".AlarmReceiver" android:exported="false" />
         <receiver android:name=".ActionReceiver" android:exported="false" />
+        <service android:name=".ChimeService" android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
     </application>
 </manifest>
