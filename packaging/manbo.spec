@@ -1,6 +1,6 @@
 Name:           manbo
-Version:        0.5.0
-Release:        2%{?dist}
+Version:        0.6.0
+Release:        1%{?dist}
 Summary:        A tiny pastel Pomodoro timer
 License:        MIT AND LicenseRef-Splice-Sounds
 URL:            https://github.com/horiidonuts/manbo
@@ -54,6 +54,11 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/gnome-shell/extensions/manbo@horiidonuts.github.io/
 
 %changelog
+* Thu Nov 19 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.6.0-1
+- Stars: every finished focus session lights a star; a week of night sky with
+  a constellation per day, plus today, streak, week and all-time stats
+- Stars sync with the phone
+
 * Tue Nov 17 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.5.0-2
 - Four new themes: Frosty, Periwinkle, Golden Summer and Autumn
 - New logo and app icon

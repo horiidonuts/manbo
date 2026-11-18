@@ -10,7 +10,12 @@ Wire protocol: one JSON object per line over TCP.
     pc:    {"t":"challenge","nonce":n2,"proof":hmac(key, "manbo1|pc|n1|n2")}
     phone: {"t":"auth","proof":hmac(key, "manbo1|phone|n1|n2")}
     then both: {"t":"state","timer":{..},"durations":{..}} on every change,
+    and {"t":"history","sessions":[[end, minutes], ..]}: everything once after
+    connecting (in chunks), then each focus session as it finishes,
     phone: {"t":"ping"} every minute, pc: {"t":"pong"}
+
+History is a set keyed by the session's end time (the same on every synced
+device), so both sides just merge what they get. Older versions ignore it.
 
 Both parts of a state carry a stamp (wall-clock ms of the last user action)
 and the id of the device it happened on; the newest one wins. A device that
@@ -39,6 +44,7 @@ from .timer import MODES
 PORT = 47250
 IDLE_TIMEOUT_S = 150      # the phone pings every 60 s
 MAX_LINE = 16 * 1024
+HISTORY_CHUNK = 250       # sessions per history message (~5 KB, well under MAX_LINE)
 
 # settings that travel with the timer: wire name -> settings key
 DURATIONS = {
@@ -165,6 +171,8 @@ class _Peer:
                 return self.close()
         elif t == "state":
             self.server.apply_remote(msg)
+        elif t == "history":
+            self.server.apply_history(self, msg)
         elif t == "ping":
             self.send({"t": "pong"})
 
@@ -194,10 +202,11 @@ class SyncServer(GObject.Object):
         "peers-changed": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
-    def __init__(self, timer, settings):
+    def __init__(self, timer, settings, history=None):
         super().__init__()
         self._timer = timer
         self._settings = settings
+        self._history = history
         self._path = os.path.join(GLib.get_user_config_dir(), "manbo", "sync.json")
         self._conf = self._load()
         if "id" not in self._conf:
@@ -211,6 +220,8 @@ class SyncServer(GObject.Object):
         self._udp_source = 0
         self._peers = []
         timer.connect("changed", lambda *_: self._broadcast())
+        if history is not None:
+            history.connect("added", lambda _h, sessions: self._send_history(sessions))
         settings.connect("changed", self._on_settings_changed)
         if self.paired:
             self.start()
@@ -310,6 +321,8 @@ class SyncServer(GObject.Object):
     def peer_ready(self, peer):
         print(f"manbo: sync: {peer.name} connected")
         peer.send(self._state())
+        if self._history is not None:
+            self._send_history(self._history.wire(), [peer])
         self.emit("peers-changed")
 
     def peer_gone(self, peer):
@@ -365,6 +378,20 @@ class SyncServer(GObject.Object):
         finally:
             self._applying = False
         self._broadcast()   # other phones, if any (the sender ignores what it already has)
+
+    def _send_history(self, sessions, peers=None):
+        for peer in list(peers if peers is not None else self._peers):
+            for i in range(0, len(sessions), HISTORY_CHUNK):
+                if peer.authed:
+                    peer.send({"t": "history", "sessions": sessions[i:i + HISTORY_CHUNK]})
+
+    def apply_history(self, sender, msg):
+        sessions = msg.get("sessions")
+        if self._history is None or not isinstance(sessions, list):
+            return
+        new = self._history.merge(sessions)
+        if new:   # other phones, if any
+            self._send_history(new, [p for p in self._peers if p is not sender])
 
     def _on_settings_changed(self, _settings, key):
         if key in DURATIONS.values() and not self._applying:

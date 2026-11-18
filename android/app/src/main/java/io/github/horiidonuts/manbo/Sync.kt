@@ -45,6 +45,8 @@ import java.util.UUID
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
+private const val HISTORY_CHUNK = 250   // sessions per history message, well under the PC's line limit
+
 // Sync with Manbo on a PC over the LAN. The PC is the server (manbo/sync.py has the protocol);
 // the phone pairs by scanning its QR code and then keeps connecting to it.
 
@@ -281,12 +283,22 @@ object SyncLink {
         }
         send(JSONObject().put("t", "auth").put("proof", proof(p.key, "phone", n1, n2)))
         s.soTimeout = 150_000   // the PC answers each ping, so silence this long means it's gone
+        // our stars, all of them once (the PC merges them with its own and sends us its own)
+        for (chunk in HistoryStore.sessions.value.chunked(HISTORY_CHUNK)) send(historyMessage(chunk))
 
         coroutineScope {
             // a failed write closes the socket, which ends the read below
             val sender = launch {
                 try {
                     combine(TimerEngine.state, SettingsStore.state) { _, _ -> }.collect { send(stateMessage()) }
+                } catch (e: Exception) {
+                    runCatching { s.close() }
+                    throw e
+                }
+            }
+            val stars = launch {
+                try {
+                    HistoryStore.added.collect { send(historyMessage(it)) }
                 } catch (e: Exception) {
                     runCatching { s.close() }
                     throw e
@@ -307,17 +319,24 @@ object SyncLink {
                 while (true) {
                     val line = runInterruptible { reader.readLine() } ?: break
                     val m = JSONObject(line)
-                    if (m.optString("t") == "state") withContext(Dispatchers.Main) { applyRemote(m) }
+                    when (m.optString("t")) {
+                        "state" -> withContext(Dispatchers.Main) { applyRemote(m) }
+                        "history" -> m.optJSONArray("sessions")?.let(HistoryStore::merge)
+                    }
                     if (_status.value.state != State.CONNECTED) _status.value = Status(State.CONNECTED, p.name)
                 }
             } finally {
                 sender.cancel()
+                stars.cancel()
                 pinger.cancel()
             }
         }
     }
 
     // -- state -----------------------------------------------------------------------
+
+    private fun historyMessage(list: List<Session>) =
+        JSONObject().put("t", "history").put("sessions", HistoryStore.toJson(list))
 
     private fun stateMessage(): JSONObject {
         val t = TimerEngine.value

@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -180,6 +181,7 @@ fun ManboScreen(openDndAccess: () -> Unit, pairWithPc: () -> Unit) {
     val timer by TimerEngine.state.collectAsStateWithLifecycle()
     val settings by SettingsStore.state.collectAsStateWithLifecycle()
     var showSettings by remember { mutableStateOf(false) }
+    var showStars by remember { mutableStateOf(false) }
 
     // end of a session: the button pops and the clock rests at 00:00 for a beat, then the next session
     var handoffMode by remember { mutableStateOf<Mode?>(null) }
@@ -229,7 +231,10 @@ fun ManboScreen(openDndAccess: () -> Unit, pairWithPc: () -> Unit) {
             Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                IconButton(onClick = { showStars = true }) {
+                    Icon(painterResource(R.drawable.ic_stars), contentDescription = "Your stars", tint = ink)
+                }
                 IconButton(onClick = { showSettings = true }) {
                     Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = ink)
                 }
@@ -274,6 +279,7 @@ fun ManboScreen(openDndAccess: () -> Unit, pairWithPc: () -> Unit) {
         }
     }
 
+    if (showStars) StarsSheet(settings.theme, onDismiss = { showStars = false })
     if (showSettings) SettingsSheet(settings, ink, openDndAccess, pairWithPc, onDismiss = { showSettings = false })
 }
 

@@ -85,9 +85,15 @@ class ManboWindow(Adw.ApplicationWindow):
             action_name="app.mini",
         )
 
+        stars = Gtk.Button(
+            icon_name="manbo-stars-symbolic", tooltip_text="Your stars (Ctrl+S)",
+            action_name="app.stars",
+        )
+
         header = Adw.HeaderBar(show_title=False)
         header.add_css_class("flat")
         header.pack_end(self.menu_button)
+        header.pack_end(stars)
         header.pack_start(mini)
 
         self.wheel = ModeWheel([(m, MODE_TITLES[m]) for m in (FOCUS, SHORT, LONG)])

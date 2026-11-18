@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "your stars": the logo's star, twice (like data/icons/.../manbo-stars-symbolic.svg) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="16" android:viewportHeight="16">
+    <group android:scaleX="0.16838" android:scaleY="0.16838"
+        android:translateX="-15.8755" android:translateY="-20.3257">
+        <path android:fillColor="#FFFFFF" android:pathData="m 132.29166,139.12617 c 0,0 6.73008,17.68818 13.22759,24.18569 6.49751,6.4975 24.18569,13.22758 24.18569,13.22758 0,0 -17.68818,6.73009 -24.18569,13.2276 -6.4975,6.49751 -13.22758,24.18569 -13.22758,24.18569 0,0 -6.73009,-17.68818 -13.2276,-24.18569 -6.49751,-6.4975 -24.185682,-13.22758 -24.185682,-13.22758 0,0 17.688172,-6.73009 24.185682,-13.2276 6.49751,-6.49751 13.22759,-24.18569 13.22759,-24.18569 z" />
+    </group>
+    <group android:scaleX="0.08018" android:scaleY="0.08018"
+        android:translateX="2.3926" android:translateY="-10.5551">
+        <path android:fillColor="#FFFFFF" android:pathData="m 132.29166,139.12617 c 0,0 6.73008,17.68818 13.22759,24.18569 6.49751,6.4975 24.18569,13.22758 24.18569,13.22758 0,0 -17.68818,6.73009 -24.18569,13.2276 -6.4975,6.49751 -13.22758,24.18569 -13.22758,24.18569 0,0 -6.73009,-17.68818 -13.2276,-24.18569 -6.49751,-6.4975 -24.185682,-13.22758 -24.185682,-13.22758 0,0 17.688172,-6.73009 24.185682,-13.2276 6.49751,-6.49751 13.22759,-24.18569 13.22759,-24.18569 z" />
+    </group>
+</vector>

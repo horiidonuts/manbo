@@ -7,6 +7,10 @@ orthographic 3D push button in the middle.
   (all configurable in Preferences)
 - Seven pastel themes: **Blossom**, **Cotton Candy**, **Coastal**, **Frosty**,
   **Periwinkle**, **Golden Summer**, **Autumn**
+- Stars: every focus session you finish lights a star. Each day's stars join
+  into a little constellation in a week of night sky (the ✦ button, Ctrl+S),
+  with today's stars, your streak, the week's focus time and all-time stars.
+  Paired with the phone, both keep the same sky
 - Rolling digits: the clock rolls down as time passes and back up on reset
   (can be turned off in Preferences)
 - Mode wheel at the top: click the arrows, drag, scroll or use ←/→
@@ -71,12 +75,14 @@ APK from the [releases](https://github.com/horiidonuts/manbo/releases).
   the Now Bar once *Developer options → Live notifications for all apps* is on
 - Optional Do Not Disturb while focusing (Android asks once for access)
 - Button and mode-switch sounds follow the media volume
+- The same stars and stats as on the PC (the ✦ button, top left); tap a star
+  to see when you earned it
 
 ### Sync with your computer
 
 Pair the phone with Manbo on your PC and the two stay in step: start, pause,
 skip or reset on either one, and Do Not Disturb follows on both. Timer lengths
-are shared too; the chime plays on the PC while they're connected.
+and your stars are shared too; the chime plays on the PC while they're connected.
 
 1. On the PC: *Preferences → Phone → Show code*
 2. Scan the QR code with the phone's camera, or in Manbo: *Settings → Scan code*

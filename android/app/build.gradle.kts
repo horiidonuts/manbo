@@ -20,8 +20,8 @@ android {
         applicationId = "io.github.horiidonuts.manbo"
         minSdk = 26
         targetSdk = 37
-        versionCode = 6
-        versionName = "0.5.1"
+        versionCode = 7
+        versionName = "0.6.0"
     }
 
     signingConfigs {
@@ -70,6 +70,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.core:core-ktx:1.19.1")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+    testImplementation("junit:junit:4.13.2")
     // "Scan code" for pairing with the PC: Google's scanner UI, no camera permission needed
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
     implementation("androidx.fragment:fragment:1.9.1")   // the scanner pulls in an old one

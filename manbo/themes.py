@@ -149,6 +149,9 @@ window.manbo-mini {
   font-feature-settings: "tnum";
   letter-spacing: -0.5px;
 }
+.stars-stat {
+  padding: 12px 16px;
+}
 .round-action {
   min-width: 44px;
   min-height: 44px;

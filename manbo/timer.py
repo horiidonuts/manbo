@@ -38,6 +38,7 @@ class PomodoroTimer(GObject.Object):
         self._remaining_us = self._duration_us(FOCUS)
         self._end_us = 0
         self._end_wall_ms = 0  # the same end, on the wall clock (what devices sync)
+        self.last_end_ms = 0   # when the last session ended (history uses it as the session's id)
         self._source = 0
         # phone sync: when and where (device id) the last user action happened;
         # the newest one wins between devices
@@ -184,7 +185,7 @@ class PomodoroTimer(GObject.Object):
 
     def _finish(self):
         # every device ends a session the same way at the same moment, so they agree
-        self.stamp = self._end_wall_ms
+        self.stamp = self.last_end_ms = self._end_wall_ms
         self._halt()
         finished = self.mode
         if finished == FOCUS:

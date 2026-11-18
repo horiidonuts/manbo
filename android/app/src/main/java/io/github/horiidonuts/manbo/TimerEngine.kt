@@ -65,6 +65,7 @@ object TimerEngine {
         if (::prefs.isInitialized) return
         app = context.applicationContext
         SettingsStore.init(app)
+        HistoryStore.init(app)
         prefs = app.getSharedPreferences("timer", Context.MODE_PRIVATE)
         val mode = Mode.of(prefs.getString("mode", null))
         _state.value = TimerState(
@@ -138,6 +139,7 @@ object TimerEngine {
         }
         // every device ends a session the same way at the same moment, so they agree
         set(enter(s.copy(completed = completed, stamp = s.endAt), next))
+        if (finished == Mode.FOCUS) HistoryStore.record(s.endAt, SettingsStore.value.focusMinutes)   // a new star
         _finished.tryEmit(Finished(finished, next))
         SessionEnd.onFinished(app, finished, next)
     }

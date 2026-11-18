@@ -5,10 +5,12 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from . import APP_ID, APP_NAME, VERSION
 from .dnd import FocusDnd
+from .history import History
 from .preferences import PreferencesDialog
 from .service import ManboService
 from .settings import Settings
 from .sounds import Sounds
+from .stars import StarsDialog
 from .sync import SyncServer
 from .themes import build_css
 from .timer import PomodoroTimer
@@ -21,6 +23,7 @@ class ManboApplication(Adw.Application):
         self.settings = None
         self.sounds = None
         self.timer = None
+        self.history = None
         self.dnd = None
         self.service = None
         self.sync = None
@@ -46,10 +49,11 @@ class ManboApplication(Adw.Application):
         self._ensure_core()
         self.sounds = Sounds()
         self.dnd = FocusDnd(self.timer, self.settings)  # before any window: see dnd.py
-        self.sync = SyncServer(self.timer, self.settings)
+        self.sync = SyncServer(self.timer, self.settings, self.history)
 
         for name, callback, accels in (
             ("preferences", self._on_preferences, ["<Control>comma"]),
+            ("stars", self._on_stars, ["<Control>s"]),
             ("about", self._on_about, []),
             ("mini", lambda *_: self._main_window().toggle_mini(), ["<Control>m"]),
             ("quit", lambda *_: self.quit(), ["<Control>q"]),
@@ -66,6 +70,7 @@ class ManboApplication(Adw.Application):
         if self.timer is None:
             self.settings = Settings()
             self.timer = PomodoroTimer(self.settings)
+            self.history = History(self.timer, self.settings)
 
     def do_dbus_register(self, connection, object_path):
         # Export the API here, before the bus name is ours: when D-Bus
@@ -118,6 +123,10 @@ class ManboApplication(Adw.Application):
     def _on_preferences(self, *_):
         window = self._full_window()
         PreferencesDialog(self.settings, preview_chime=window.play_chime, sync=self.sync).present(window)
+
+    def _on_stars(self, *_):
+        window = self._full_window()
+        StarsDialog(self.history, self.settings).present(window)
 
     def _on_about(self, *_):
         Adw.AboutDialog(
