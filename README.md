@@ -62,7 +62,7 @@ gdbus call --session --dest io.github.horiidonuts.Manbo \
 
 ## Android
 
-Manbo for Android (Android 12+) has the same look, sounds and button. Get the
+Manbo for Android (Android 8.0+) has the same look, sounds and button. Get the
 APK from the [releases](https://github.com/horiidonuts/manbo/releases).
 
 - Keeps counting with the app closed: an ongoing countdown notification and a
