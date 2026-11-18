@@ -30,6 +30,38 @@ THEMES = {
             "long": {"bg": "#F1EEE4", "button": "#3B7DA1", "text": "#3B7DA1"},
         },
     },
+    "frosty": {
+        "name": "Frosty",
+        "modes": {
+            "focus": {"bg": "#DAF5FE", "button": "#A0DCF0", "text": "#3C7390"},
+            "short": {"bg": "#CAEFFB", "button": "#7EC4DC", "text": "#3C7390"},
+            "long": {"bg": "#ADE2F4", "button": "#3C7390", "text": "#3C7390"},
+        },
+    },
+    "periwinkle": {
+        "name": "Periwinkle",
+        "modes": {
+            "focus": {"bg": "#F5EFFF", "button": "#A594F9", "text": "#4F4AB8"},
+            "short": {"bg": "#E5D9F2", "button": "#7371FC", "text": "#4F4AB8"},
+            "long": {"bg": "#CDC1FF", "button": "#F5EFFF", "text": "#4F4AB8"},
+        },
+    },
+    "golden": {
+        "name": "Golden Summer",
+        "modes": {
+            "focus": {"bg": "#FEFAE0", "button": "#D4A373", "text": "#7A5C3A"},
+            "short": {"bg": "#E9EDC9", "button": "#D4A373", "text": "#7A5C3A"},
+            "long": {"bg": "#FAEDCD", "button": "#CCD5AE", "text": "#7A5C3A"},
+        },
+    },
+    "autumn": {
+        "name": "Autumn",
+        "modes": {
+            "focus": {"bg": "#F7E4BE", "button": "#F0B49E", "text": "#413E4A"},
+            "short": {"bg": "#F0B49E", "button": "#F7E4BE", "text": "#413E4A"},
+            "long": {"bg": "#B38184", "button": "#73626E", "text": "#2E2B35"},
+        },
+    },
 }
 
 DEFAULT_THEME = "blossom"

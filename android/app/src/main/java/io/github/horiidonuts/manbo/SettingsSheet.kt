@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -116,7 +117,7 @@ fun SettingsSheet(settings: Settings, ink: Color, openDndAccess: () -> Unit, pai
             }
 
             Heading("Appearance")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (t in THEMES) {
                     FilterChip(selected = settings.theme == t.key, onClick = { SettingsStore.update { it.copy(theme = t.key) } },
                         label = { Text(t.name) })

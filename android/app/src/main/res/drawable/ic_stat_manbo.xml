@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- status bar / monochrome icon: the clock as a white outline -->
+<!-- status bar icon (generated from data/manbo_logo.svg) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp" android:height="24dp"
     android:viewportWidth="24" android:viewportHeight="24">
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="2.2"
-        android:pathData="M3.5,12a8.5,8.5 0 1,0 17,0a8.5,8.5 0 1,0 -17,0" />
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="2.2" android:strokeLineCap="round"
-        android:pathData="M12,12L12,7.5M12,12L15.5,14" />
+    <group android:scaleX="0.1139" android:scaleY="0.1139"
+        android:translateX="-3.0685" android:translateY="-3.4982">
+        <group android:translateY="1.2902">
+            <path android:fillColor="#FFFFFF"
+                android:pathData="m 132.29166,55.595244 c 0,0 23.455,53.691036 33.07292,48.947916 13.48528,-6.65031 17.19792,-34.855187 17.19792,-34.855187 0,0 6.58088,28.483482 22.48958,63.959357 5.69295,12.69508 23.20755,35.88235 23.20755,35.88235 h 0.60495 c 0,0 -66.69447,0.79999 -80.69792,-13.42552 -12.05232,-12.24344 -15.87499,-30.82565 -15.87499,-30.82565 0,0 -3.82665,18.57419 -15.875,30.82565 -14.42145,14.66457 -53.139145,10.70651 -80.09297,12.85598 -0.201012,0.016 -0.60495,0 -0.60495,0 0,0 14.689183,-11.09116 23.812499,-35.31281 9.123316,-24.22165 22.489583,-63.959357 22.489583,-63.959357 0,0 5.07104,27.446455 17.197917,34.855187 12.476361,7.62225 33.072911,-48.947916 33.072911,-48.947916 z" />
+        </group>
+        <path android:fillColor="#FFFFFF"
+            android:pathData="m 132.29166,139.12617 c 0,0 6.73008,17.68818 13.22759,24.18569 6.49751,6.4975 24.18569,13.22758 24.18569,13.22758 0,0 -17.68818,6.73009 -24.18569,13.2276 -6.4975,6.49751 -13.22758,24.18569 -13.22758,24.18569 0,0 -6.73009,-17.68818 -13.2276,-24.18569 -6.49751,-6.4975 -24.185682,-13.22758 -24.185682,-13.22758 0,0 17.688172,-6.73009 24.185682,-13.2276 6.49751,-6.49751 13.22759,-24.18569 13.22759,-24.18569 z" />
+    </group>
 </vector>

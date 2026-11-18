@@ -5,7 +5,8 @@ orthographic 3D push button in the middle.
 
 - Focus 25 min → short break 5 min, long break 15 min every 4 focus sessions
   (all configurable in Preferences)
-- Three pastel themes: **Blossom**, **Cotton Candy**, **Coastal**
+- Seven pastel themes: **Blossom**, **Cotton Candy**, **Coastal**, **Frosty**,
+  **Periwinkle**, **Golden Summer**, **Autumn**
 - Rolling digits: the clock rolls down as time passes and back up on reset
   (can be turned off in Preferences)
 - Mode wheel at the top: click the arrows, drag, scroll or use ←/→

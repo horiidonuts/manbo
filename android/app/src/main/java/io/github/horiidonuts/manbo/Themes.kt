@@ -25,6 +25,26 @@ val THEMES = listOf(
         Mode.SHORT to Palette(c("#EAF0F2"), c("#98B9CB"), c("#3B7DA1")),
         Mode.LONG to Palette(c("#F1EEE4"), c("#3B7DA1"), c("#3B7DA1")),
     )),
+    Theme("frosty", "Frosty", mapOf(
+        Mode.FOCUS to Palette(c("#DAF5FE"), c("#A0DCF0"), c("#3C7390")),
+        Mode.SHORT to Palette(c("#CAEFFB"), c("#7EC4DC"), c("#3C7390")),
+        Mode.LONG to Palette(c("#ADE2F4"), c("#3C7390"), c("#3C7390")),
+    )),
+    Theme("periwinkle", "Periwinkle", mapOf(
+        Mode.FOCUS to Palette(c("#F5EFFF"), c("#A594F9"), c("#4F4AB8")),
+        Mode.SHORT to Palette(c("#E5D9F2"), c("#7371FC"), c("#4F4AB8")),
+        Mode.LONG to Palette(c("#CDC1FF"), c("#F5EFFF"), c("#4F4AB8")),
+    )),
+    Theme("golden", "Golden Summer", mapOf(
+        Mode.FOCUS to Palette(c("#FEFAE0"), c("#D4A373"), c("#7A5C3A")),
+        Mode.SHORT to Palette(c("#E9EDC9"), c("#D4A373"), c("#7A5C3A")),
+        Mode.LONG to Palette(c("#FAEDCD"), c("#CCD5AE"), c("#7A5C3A")),
+    )),
+    Theme("autumn", "Autumn", mapOf(
+        Mode.FOCUS to Palette(c("#F7E4BE"), c("#F0B49E"), c("#413E4A")),
+        Mode.SHORT to Palette(c("#F0B49E"), c("#F7E4BE"), c("#413E4A")),
+        Mode.LONG to Palette(c("#B38184"), c("#73626E"), c("#2E2B35")),
+    )),
 )
 
 fun palette(theme: String, mode: Mode): Palette =

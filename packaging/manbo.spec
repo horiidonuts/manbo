@@ -1,6 +1,6 @@
 Name:           manbo
-Version:        0.4.0
-Release:        1%{?dist}
+Version:        0.5.0
+Release:        2%{?dist}
 Summary:        A tiny pastel Pomodoro timer
 License:        MIT AND LicenseRef-Splice-Sounds
 URL:            https://github.com/horiidonuts/manbo
@@ -54,6 +54,10 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/gnome-shell/extensions/manbo@horiidonuts.github.io/
 
 %changelog
+* Tue Nov 17 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.5.0-2
+- Four new themes: Frosty, Periwinkle, Golden Summer and Autumn
+- New logo and app icon
+
 * Mon Nov 16 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.4.0-1
 - Phone sync: pair Manbo for Android with a QR code (Preferences -> Phone)
   and the timer, its lengths and Do Not Disturb stay in step on both
