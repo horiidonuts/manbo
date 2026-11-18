@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.os.Build
 import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.Network
@@ -13,6 +14,7 @@ import android.net.Uri
 import android.provider.Settings as AndroidSettings
 import android.util.Base64
 import android.util.Log
+import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,6 +50,10 @@ import javax.crypto.spec.SecretKeySpec
 
 private const val TAG = "ManboSync"
 const val LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"   // Android 17
+
+/** Android 17 (API 37) asks for local network access; older versions don't have the permission. */
+fun hasLocalNetwork(context: Context) = Build.VERSION.SDK_INT < 37 ||
+    ContextCompat.checkSelfPermission(context, LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED
 
 data class Pairing(
     val pcId: String,
@@ -190,7 +196,7 @@ object SyncLink {
         var backoff = 3_000L
         while (currentCoroutineContext().isActive) {
             val p = SyncStore.pairing.value ?: run { _status.value = Status(State.UNPAIRED); return }
-            if (ContextCompat.checkSelfPermission(app, LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) {
+            if (!hasLocalNetwork(app)) {
                 _status.value = Status(State.NO_PERMISSION, p.name)
                 sleep(60_000)
                 continue
@@ -392,7 +398,7 @@ class SyncService : Service() {
         TimerEngine.init(this)
         Notifications.createChannels(this)
         try {
-            startForeground(Notifications.ID_SYNC, Notifications.syncNotification(this, SyncLink.status.value),
+            ServiceCompat.startForeground(this, Notifications.ID_SYNC, Notifications.syncNotification(this, SyncLink.status.value),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
         } catch (e: Exception) {   // not allowed right now (started from the background)
             Log.w(TAG, "can't run in the background: $e")

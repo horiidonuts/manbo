@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- end the session on time even when the phone is idle; a timer app's core job -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- Android 12: USE_EXACT_ALARM only exists from Android 13 -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <!-- optional Do Not Disturb while focusing (the user grants access in settings) -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.VIBRATE" />

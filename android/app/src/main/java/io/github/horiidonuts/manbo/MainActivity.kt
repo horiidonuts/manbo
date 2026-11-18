@@ -98,8 +98,7 @@ class MainActivity : ComponentActivity() {
         if (!hasLocalNetwork()) askLocalNetwork.launch(LOCAL_NETWORK) else scanPairingCode()
     }
 
-    private fun hasLocalNetwork() =
-        ContextCompat.checkSelfPermission(this, LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED
+    private fun hasLocalNetwork() = hasLocalNetwork(this)
 
     private fun scanPairingCode() {
         val options = GmsBarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()

@@ -11,11 +11,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
+import android.os.Build
 import android.media.MediaPlayer
 import android.media.SoundPool
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import java.text.DateFormat
 import java.util.Date
@@ -80,7 +82,8 @@ object Notifications {
         })
     }
 
-    private fun canPost(context: Context) =
+    // the permission only exists on Android 13+; before that notifications are allowed by default
+    private fun canPost(context: Context) = Build.VERSION.SDK_INT < 33 ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
     private fun openApp(context: Context) = PendingIntent.getActivity(
@@ -197,8 +200,8 @@ class ChimeService : android.app.Service() {
         TimerEngine.init(this)
         val finished = Mode.of(intent?.getStringExtra(EXTRA_FINISHED))
         val next = Mode.of(intent?.getStringExtra(EXTRA_NEXT))
-        startForeground(
-            Notifications.ID_END, Notifications.sessionEndNotification(this, finished, next),
+        ServiceCompat.startForeground(
+            this, Notifications.ID_END, Notifications.sessionEndNotification(this, finished, next),
             android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
         )
         Sounds.chime(this, SettingsStore.value, alarm = true)
