@@ -4,5 +4,5 @@
   "description": "Manbo's Pomodoro timer in the top bar: the time left, start/pause, reset and modes. Needs the Manbo app (https://github.com/horiidonuts/manbo).",
   "shell-version": ["45", "46", "47", "48", "49", "50"],
   "url": "https://github.com/horiidonuts/manbo",
-  "version-name": "0.6.0"
+  "version-name": "0.6.1"
 }

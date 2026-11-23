@@ -1,5 +1,5 @@
 Name:           manbo
-Version:        0.6.0
+Version:        0.6.1
 Release:        1%{?dist}
 Summary:        A tiny pastel Pomodoro timer
 License:        MIT AND LicenseRef-Splice-Sounds
@@ -54,6 +54,10 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/gnome-shell/extensions/manbo@horiidonuts.github.io/
 
 %changelog
+* Tue Nov 24 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.6.1-1
+- Stars panel: a full-bleed twilight sky, from a pale horizon glow with
+  clouds down to deep night, scrolling with the stats
+
 * Thu Nov 19 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.6.0-1
 - Stars: every finished focus session lights a star; a week of night sky with
   a constellation per day, plus today, streak, week and all-time stats

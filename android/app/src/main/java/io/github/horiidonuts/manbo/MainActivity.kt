@@ -47,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -286,27 +287,33 @@ fun ManboScreen(openDndAccess: () -> Unit, pairWithPc: () -> Unit) {
 @Composable
 private fun ModePill(mode: Mode, ink: Color, onStep: (Int) -> Unit) {
     var drag by remember { mutableStateOf(0f) }
+    // an endless carousel (like the desktop's mode wheel): a step slides the way it was asked for,
+    // so right after LONG BREAK comes FOCUS from the right; other changes go the shortest way round
+    var stepDir by remember { mutableIntStateOf(0) }
+    val step = { delta: Int -> stepDir = delta; onStep(delta) }
+    LaunchedEffect(mode) { stepDir = 0 }
     Row(
         Modifier
             .border(1.dp, ink.copy(alpha = 0.18f), RoundedCornerShape(50))
             .background(Color.White.copy(alpha = 0.35f), RoundedCornerShape(50))
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
-                    onDragEnd = { if (kotlin.math.abs(drag) > 40) onStep(if (drag < 0) 1 else -1); drag = 0f },
+                    onDragEnd = { if (kotlin.math.abs(drag) > 40) step(if (drag < 0) 1 else -1); drag = 0f },
                     onHorizontalDrag = { _, d -> drag += d },
                 )
             }
             .height(40.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = { onStep(-1) }, Modifier.size(40.dp)) {
+        IconButton(onClick = { step(-1) }, Modifier.size(40.dp)) {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous mode", tint = ink)
         }
         AnimatedContent(
             targetState = mode,
             transitionSpec = {
-                val forward = targetState.ordinal > initialState.ordinal
-                val dir = if (forward) 1 else -1
+                val n = Mode.entries.size
+                val dir = if (stepDir != 0) stepDir
+                    else if ((targetState.ordinal - initialState.ordinal + n) % n <= n / 2) 1 else -1
                 slideInHorizontally(tween(280)) { it * dir } togetherWith slideOutHorizontally(tween(280)) { -it * dir }
             },
             label = "mode",
@@ -320,7 +327,7 @@ private fun ModePill(mode: Mode, ink: Color, onStep: (Int) -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        IconButton(onClick = { onStep(1) }, Modifier.size(40.dp)) {
+        IconButton(onClick = { step(1) }, Modifier.size(40.dp)) {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next mode", tint = ink)
         }
     }

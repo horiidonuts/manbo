@@ -10,7 +10,7 @@ from .preferences import PreferencesDialog
 from .service import ManboService
 from .settings import Settings
 from .sounds import Sounds
-from .stars import StarsDialog
+from .stars import StarsDialog, stars_css
 from .sync import SyncServer
 from .themes import build_css
 from .timer import PomodoroTimer
@@ -41,7 +41,7 @@ class ManboApplication(Adw.Application):
         Gtk.Window.set_default_icon_name(APP_ID)
 
         provider = Gtk.CssProvider()
-        provider.load_from_string(build_css())
+        provider.load_from_string(build_css() + "\n" + stars_css())
         Gtk.StyleContext.add_provider_for_display(
             display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
