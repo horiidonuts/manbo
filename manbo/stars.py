@@ -7,12 +7,27 @@ import cairo
 
 from gi.repository import Adw, Gtk
 
+from .i18n import t, turkish
 from .history import (
     by_day, format_minutes, layout_day, star_scale, summary, week_start, _mulberry32,
 )
 from .themes import THEMES, WHITE, hex_to_rgb, mix, palette
 
-DAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+
+def day_names():
+    return (("Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz") if turkish()
+            else ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"))
+
+
+def month_name(month):
+    names = (("Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara") if turkish()
+             else ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+    return names[month - 1]
+
+
+def short_date(d):
+    return f"{d.day} {month_name(d.month)}" if turkish() else f"{month_name(d.month)} {d.day}"
 STAR_R = 8.5           # radius of a 25-minute star, px
 LABEL_BAND = 40        # room for the day names under the sky
 SKY_HEIGHT = 280
@@ -177,7 +192,7 @@ class SkyView(Gtk.DrawingArea):
             cr.set_font_size(11)
             alpha = 0.95 if day == today else (0.35 if day > today else 0.6)
             cr.set_source_rgba(*colors["star"], alpha)
-            for text, dy in ((DAY_NAMES[i], 17), (str(day.day), 31)):
+            for text, dy in ((day_names()[i], 17), (str(day.day), 31)):
                 ext = cr.text_extents(text)
                 cr.move_to(x0 + col_w / 2 - ext.x_advance / 2, sky_h + dy)
                 cr.show_text(text)
@@ -213,8 +228,9 @@ class SkyView(Gtk.DrawingArea):
             cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
             cr.set_font_size(13)
             cr.set_source_rgba(*colors["star"], 0.75)
-            text = ("Finish a focus session to light your first star"
-                    if self.monday == week_start(today) else "No stars this week")
+            text = (t("Finish a focus session to light your first star",
+                      "İlk yıldızını yakmak için bir odak seansı bitir")
+                    if self.monday == week_start(today) else t("No stars this week", "Bu hafta yıldız yok"))
             ext = cr.text_extents(text)
             cr.move_to(w / 2 - ext.x_advance / 2, sky_h / 2)
             cr.show_text(text)
@@ -224,7 +240,7 @@ class SkyView(Gtk.DrawingArea):
         if best is None or math.hypot(best[0] - x, best[1] - y) > 16:
             return False
         when = dt.datetime.fromtimestamp(best[2] / 1000)
-        tooltip.set_text(f"{DAY_NAMES[when.weekday()]} {when:%H:%M} · {format_minutes(best[3])}")
+        tooltip.set_text(f"{day_names()[when.weekday()]} {when:%H:%M} · {format_minutes(best[3])}")
         return True
 
 
@@ -241,15 +257,15 @@ class _Stat(Gtk.Box):
 
 class StarsDialog(Adw.Dialog):
     def __init__(self, history, settings):
-        super().__init__(title="Your stars", content_width=600, content_height=760)
+        super().__init__(title=t("Your stars", "Yıldızların"), content_width=600, content_height=760)
         self._history = history
         self._settings = settings
         self._offset = 0   # weeks back from this one
 
         self.sky = SkyView()
-        self._prev = Gtk.Button(icon_name="go-previous-symbolic", tooltip_text="Previous week",
+        self._prev = Gtk.Button(icon_name="go-previous-symbolic", tooltip_text=t("Previous week", "Önceki hafta"),
                                 css_classes=["flat", "circular"])
-        self._next = Gtk.Button(icon_name="go-next-symbolic", tooltip_text="Next week",
+        self._next = Gtk.Button(icon_name="go-next-symbolic", tooltip_text=t("Next week", "Sonraki hafta"),
                                 css_classes=["flat", "circular"])
         self._prev.connect("clicked", lambda *_: self._move(1))
         self._next.connect("clicked", lambda *_: self._move(-1))
@@ -259,10 +275,10 @@ class StarsDialog(Adw.Dialog):
         nav.append(self._week_label)
         nav.append(self._next)
 
-        self._today = _Stat("today")
-        self._streak = _Stat("days in a row")
-        self._week = _Stat("this week")
-        self._total = _Stat("stars in all")
+        self._today = _Stat(t("today", "bugün"))
+        self._streak = _Stat(t("days in a row", "gün üst üste"))
+        self._week = _Stat(t("this week", "bu hafta"))
+        self._total = _Stat(t("stars in all", "toplam yıldız"))
         grid = Gtk.Grid(column_spacing=12, row_spacing=12, column_homogeneous=True)
         grid.attach(self._today, 0, 0, 1, 1)
         grid.attach(self._streak, 1, 0, 1, 1)
@@ -333,12 +349,12 @@ class StarsDialog(Adw.Dialog):
         self._next.set_sensitive(self._offset > 0)
 
         if self._offset == 0:
-            self._week_label.set_label("This week")
+            self._week_label.set_label(t("This week", "Bu hafta"))
         elif self._offset == 1:
-            self._week_label.set_label("Last week")
+            self._week_label.set_label(t("Last week", "Geçen hafta"))
         else:
             sunday = monday + dt.timedelta(days=6)
-            self._week_label.set_label(f"{monday:%b} {monday.day} – {sunday:%b} {sunday.day}")
+            self._week_label.set_label(f"{short_date(monday)} – {short_date(sunday)}")
         theme = self._settings["theme"]
         if self._theme_class:
             self._sky_box.remove_css_class(self._theme_class)
@@ -351,12 +367,15 @@ class StarsDialog(Adw.Dialog):
         s = summary(sessions, today)
         week_minutes = sum(m for i in range(7) for _e, m in days.get(monday + dt.timedelta(days=i), []))
         stars = s["today_stars"]
-        self._today.value.set_label(f"{stars} {'star' if stars == 1 else 'stars'}")
-        self._today.caption.set_label(f"today · {format_minutes(s['today_minutes'])}" if stars else "today")
+        self._today.value.set_label(t(f"{stars} {'star' if stars == 1 else 'stars'}", f"{stars} yıldız"))
+        today_text = t("today", "bugün")
+        self._today.caption.set_label(f"{today_text} · {format_minutes(s['today_minutes'])}" if stars else today_text)
         self._streak.value.set_label(str(s["streak"]))
-        self._streak.caption.set_label("day in a row" if s["streak"] == 1 else "days in a row")
+        self._streak.caption.set_label(t("day in a row" if s["streak"] == 1 else "days in a row", "gün üst üste"))
         self._week.value.set_label(format_minutes(week_minutes))
-        self._week.caption.set_label(f"focused {self._week_label.get_label().lower()}"
-                                     if self._offset < 2 else "focused that week")
+        self._week.caption.set_label({
+            0: t("focused this week", "bu hafta odak"),
+            1: t("focused last week", "geçen hafta odak"),
+        }.get(self._offset, t("focused that week", "o hafta odak")))
         self._total.value.set_label(str(s["total_stars"]))
-        self._total.caption.set_label("star in all" if s["total_stars"] == 1 else "stars in all")
+        self._total.caption.set_label(t("star in all" if s["total_stars"] == 1 else "stars in all", "toplam yıldız"))

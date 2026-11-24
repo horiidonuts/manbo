@@ -29,6 +29,8 @@ orthographic 3D push button in the middle.
   reset, switch modes and open Manbo (GNOME 45–50). After installing, log out
   and back in once, then turn on **Manbo** in the *Extensions* app (or run
   `gnome-extensions enable manbo@horiidonuts.github.io`)
+- English and Turkish: Preferences → Language (System follows your desktop's
+  language). The Plasma widget and the GNOME top bar follow Manbo
 - Optional: Do Not Disturb while a focus session runs (other notifications are
   held back; Manbo's own session-end alert still comes through)
 - Optional: keep running in the background when the window is closed

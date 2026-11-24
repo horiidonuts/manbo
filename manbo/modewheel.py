@@ -65,6 +65,12 @@ class ModeWheel(Gtk.DrawingArea):
 
     # -- public API ----------------------------------------------------------
 
+    def set_titles(self, titles):
+        """New labels in the same order (another language)."""
+        self._titles = list(titles)
+        self._layouts = None
+        self.queue_draw()
+
     def set_mode(self, key, animate=True):
         n = len(self._keys)
         if self._keys[self._target % n] == key:

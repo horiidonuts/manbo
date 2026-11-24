@@ -16,6 +16,7 @@ DEFAULTS = {
     "clock_animations": True,
     "dnd_during_focus": False,
     "run_in_background": False,
+    "language": "system",   # system / en / tr (i18n.py)
 }
 
 # Allowed ranges for the numeric settings: (min, max)
@@ -30,6 +31,7 @@ RANGES = {
 # Allowed values for the choice settings
 CHOICES = {
     "chime_length": ("off", "short", "normal", "long"),
+    "language": ("system", "en", "tr"),
 }
 
 

@@ -46,6 +46,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -89,7 +90,8 @@ class MainActivity : ComponentActivity() {
         SyncLink.restart()
         val code = pendingCode.also { pendingCode = null }
         when {
-            !granted -> toast("Manbo needs \"Nearby devices\" to find your PC")
+            !granted -> toast(t("Manbo needs \"Nearby devices\" to find your PC",
+                "Manbo'nun bilgisayarını bulması için \"Yakındaki cihazlar\" izni gerekiyor"))
             code != null -> usePairingCode(code)
             else -> scanPairingCode()
         }
@@ -108,7 +110,8 @@ class MainActivity : ComponentActivity() {
             .addOnSuccessListener { code -> code.rawValue?.let(::usePairingCode) }
             .addOnFailureListener {
                 // no Google Play services (or the scanner won't load): the camera app works too
-                toast("Couldn't open the scanner. Scan the code with your camera app instead.")
+                toast(t("Couldn't open the scanner. Scan the code with your camera app instead.",
+                    "Tarayıcı açılamadı. Kodu kamera uygulamasıyla tara."))
             }
     }
 
@@ -118,7 +121,7 @@ class MainActivity : ComponentActivity() {
             askLocalNetwork.launch(LOCAL_NETWORK)
             return
         }
-        if (SyncStore.pair(code) == null) return toast("That isn't a Manbo pairing code")
+        if (SyncStore.pair(code) == null) return toast(t("That isn't a Manbo pairing code", "Bu bir Manbo eşleştirme kodu değil"))
         SyncLink.restart()
         SyncService.update(this)
     }
@@ -127,12 +130,13 @@ class MainActivity : ComponentActivity() {
     private fun handleLink(intent: Intent?) {
         val code = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString ?: return
         setIntent(Intent(this, MainActivity::class.java))   // don't ask again on rotation
-        val name = android.net.Uri.parse(code).getQueryParameter("name") ?: "this computer"
+        val name = android.net.Uri.parse(code).getQueryParameter("name") ?: t("this computer", "bu bilgisayar")
         android.app.AlertDialog.Builder(this)
-            .setTitle("Pair with $name?")
-            .setMessage("Manbo will keep its timer in step with Manbo on $name.")
-            .setPositiveButton("Pair") { _, _ -> usePairingCode(code) }
-            .setNegativeButton("Cancel", null)
+            .setTitle(t("Pair with $name?", "$name ile eşleşilsin mi?"))
+            .setMessage(t("Manbo will keep its timer in step with Manbo on $name.",
+                "Manbo, zamanlayıcısını $name üzerindeki Manbo ile senkron tutacak."))
+            .setPositiveButton(t("Pair", "Eşleştir")) { _, _ -> usePairingCode(code) }
+            .setNegativeButton(t("Cancel", "İptal"), null)
             .show()
     }
 
@@ -227,17 +231,18 @@ fun ManboScreen(openDndAccess: () -> Unit, pairWithPc: () -> Unit) {
         wasDown = timer.running
     }
 
-    Box(Modifier.fillMaxSize().background(bg)) {
+    // a new language: draw the screen again (texts are read while composing; the sheets stay open)
+    key(settings.language) { Box(Modifier.fillMaxSize().background(bg)) {
         Column(
             Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 IconButton(onClick = { showStars = true }) {
-                    Icon(painterResource(R.drawable.ic_stars), contentDescription = "Your stars", tint = ink)
+                    Icon(painterResource(R.drawable.ic_stars), contentDescription = t("Your stars", "Yıldızların"), tint = ink)
                 }
                 IconButton(onClick = { showSettings = true }) {
-                    Icon(Icons.Filled.Settings, contentDescription = "Settings", tint = ink)
+                    Icon(Icons.Filled.Settings, contentDescription = t("Settings", "Ayarlar"), tint = ink)
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -274,11 +279,11 @@ fun ManboScreen(openDndAccess: () -> Unit, pairWithPc: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().weight(1f),
             )
             IconButton(onClick = { handoffMode = null; TimerEngine.reset() }, modifier = Modifier.size(56.dp)) {
-                Icon(Icons.Filled.Refresh, contentDescription = "Reset session", tint = ink)
+                Icon(Icons.Filled.Refresh, contentDescription = t("Reset session", "Seansı sıfırla"), tint = ink)
             }
             Spacer(Modifier.height(12.dp))
         }
-    }
+    } }
 
     if (showStars) StarsSheet(settings.theme, onDismiss = { showStars = false })
     if (showSettings) SettingsSheet(settings, ink, openDndAccess, pairWithPc, onDismiss = { showSettings = false })
@@ -306,7 +311,7 @@ private fun ModePill(mode: Mode, ink: Color, onStep: (Int) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = { step(-1) }, Modifier.size(40.dp)) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous mode", tint = ink)
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = t("Previous mode", "Önceki mod"), tint = ink)
         }
         AnimatedContent(
             targetState = mode,
@@ -328,7 +333,7 @@ private fun ModePill(mode: Mode, ink: Color, onStep: (Int) -> Unit) {
             )
         }
         IconButton(onClick = { step(1) }, Modifier.size(40.dp)) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next mode", tint = ink)
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = t("Next mode", "Sonraki mod"), tint = ink)
         }
     }
 }

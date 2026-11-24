@@ -52,9 +52,9 @@ object StarMath {
         val h = minutes / 60
         val m = minutes % 60
         return when {
-            h > 0 && m > 0 -> "$h h $m min"
-            h > 0 -> "$h h"
-            else -> "$m min"
+            h > 0 && m > 0 -> t("$h h $m min", "$h sa $m dk")
+            h > 0 -> t("$h h", "$h sa")
+            else -> t("$m min", "$m dk")
         }
     }
 

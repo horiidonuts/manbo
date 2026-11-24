@@ -1,5 +1,5 @@
 Name:           manbo
-Version:        0.6.1
+Version:        0.7.0
 Release:        1%{?dist}
 Summary:        A tiny pastel Pomodoro timer
 License:        MIT AND LicenseRef-Splice-Sounds
@@ -54,6 +54,12 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/gnome-shell/extensions/manbo@horiidonuts.github.io/
 
 %changelog
+* Tue Nov 24 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.7.0-1
+- Turkish: Preferences → Language (System / English / Türkçe), also in the
+  Plasma widget and the GNOME top bar
+- Phone sync finds the PC again after its address changes, on any network or
+  the phone's hotspot, without pairing again
+
 * Tue Nov 24 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.6.1-1
 - Stars panel: a full-bleed twilight sky, from a pale horizon glow with
   clouds down to deep night, scrolling with the stats

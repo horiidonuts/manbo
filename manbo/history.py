@@ -16,6 +16,7 @@ import os
 
 from gi.repository import GLib, GObject
 
+from .i18n import t
 from .timer import FOCUS
 
 
@@ -140,9 +141,10 @@ def summary(sessions, today):
 
 def format_minutes(minutes):
     h, m = divmod(minutes, 60)
+    hours, mins = t("h", "sa"), t("min", "dk")
     if h and m:
-        return f"{h} h {m} min"
-    return f"{h} h" if h else f"{m} min"
+        return f"{h} {hours} {m} {mins}"
+    return f"{h} {hours}" if h else f"{m} {mins}"
 
 
 # -- star layout (mirrored in History.kt) ---------------------------------------------

@@ -6,6 +6,8 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 from . import APP_ID, APP_NAME, VERSION
 from .dnd import FocusDnd
 from .history import History
+from . import i18n
+from .i18n import t
 from .preferences import PreferencesDialog
 from .service import ManboService
 from .settings import Settings
@@ -69,6 +71,7 @@ class ManboApplication(Adw.Application):
         and registration comes first."""
         if self.timer is None:
             self.settings = Settings()
+            i18n.init(self.settings)
             self.timer = PomodoroTimer(self.settings)
             self.history = History(self.timer, self.settings)
 
@@ -133,7 +136,7 @@ class ManboApplication(Adw.Application):
             application_name=APP_NAME,
             application_icon=APP_ID,
             version=VERSION,
-            comments="A tiny pastel Pomodoro timer",
+            comments=t("A tiny pastel Pomodoro timer", "Minicik, pastel bir Pomodoro zamanlayıcısı"),
         ).present(self._full_window())
 
 

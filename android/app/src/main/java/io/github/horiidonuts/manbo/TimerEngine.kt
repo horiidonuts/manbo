@@ -12,10 +12,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.ceil
 import kotlin.math.max
 
-enum class Mode(val key: String, val title: String, val label: String) {
-    FOCUS("focus", "FOCUS", "Focus"),
-    SHORT("short", "SHORT BREAK", "Short break"),
-    LONG("long", "LONG BREAK", "Long break");
+enum class Mode(val key: String, private val en: String, private val tr: String) {
+    FOCUS("focus", "Focus", "Odak"),
+    SHORT("short", "Short break", "Kısa mola"),
+    LONG("long", "Long break", "Uzun mola");
+
+    val label get() = t(en, tr)
+    val title get() = label.uppercase(Lang.locale)
 
     companion object {
         fun of(key: String?) = entries.firstOrNull { it.key == key } ?: FOCUS

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,41 +59,45 @@ fun SettingsSheet(settings: Settings, ink: Color, openDndAccess: () -> Unit, pai
         Column(
             Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Heading("Timer")
-            Stepper("Focus", "minutes", settings.focusMinutes, Settings.RANGES.getValue("focusMinutes")) { v ->
+        ) { key(settings.language) {   // a new language: everything in here again, in it
+            Heading(t("Timer", "Zamanlayıcı"))
+            Stepper(t("Focus", "Odak"), t("minutes", "dakika"), settings.focusMinutes, Settings.RANGES.getValue("focusMinutes")) { v ->
                 SettingsStore.update { it.copy(focusMinutes = v) }
             }
-            Stepper("Short break", "minutes", settings.shortBreakMinutes, Settings.RANGES.getValue("shortBreakMinutes")) { v ->
+            Stepper(t("Short break", "Kısa mola"), t("minutes", "dakika"), settings.shortBreakMinutes, Settings.RANGES.getValue("shortBreakMinutes")) { v ->
                 SettingsStore.update { it.copy(shortBreakMinutes = v) }
             }
-            Stepper("Long break", "minutes", settings.longBreakMinutes, Settings.RANGES.getValue("longBreakMinutes")) { v ->
+            Stepper(t("Long break", "Uzun mola"), t("minutes", "dakika"), settings.longBreakMinutes, Settings.RANGES.getValue("longBreakMinutes")) { v ->
                 SettingsStore.update { it.copy(longBreakMinutes = v) }
             }
-            Stepper("Long break interval", "focus sessions", settings.longBreakInterval, Settings.RANGES.getValue("longBreakInterval")) { v ->
+            Stepper(t("Long break interval", "Uzun mola aralığı"), t("focus sessions", "odak seansı"), settings.longBreakInterval, Settings.RANGES.getValue("longBreakInterval")) { v ->
                 SettingsStore.update { it.copy(longBreakInterval = v) }
             }
 
-            Heading("Focus")
-            Toggle("Do Not Disturb while focusing", "Silence other notifications while a focus session runs",
+            Heading(t("Focus", "Odak"))
+            Toggle(t("Do Not Disturb while focusing", "Odaklanırken Rahatsız Etmeyin"),
+                t("Silence other notifications while a focus session runs", "Odak seansı sürerken diğer bildirimleri sustur"),
                 settings.dndDuringFocus) { on ->
                 if (on && !Dnd.hasAccess(context)) openDndAccess()   // Android asks once for DND access
                 SettingsStore.update { it.copy(dndDuringFocus = on) }
             }
 
-            Heading("PC sync")
+            Heading(t("PC sync", "Bilgisayarla senkron"))
             val pc = pairing
             if (pc == null) {
-                Text("Keep the timer in step with Manbo on your computer: start, pause or skip on either one. " +
+                Text(t("Keep the timer in step with Manbo on your computer: start, pause or skip on either one. " +
                     "On the PC open Preferences → Phone → Show code, then scan it here or with your camera app.",
+                    "Zamanlayıcı bilgisayardaki Manbo ile birlikte çalışsın: ikisinden birinde başlat, duraklat ya da atla. " +
+                    "Bilgisayarda Tercihler → Telefon → Kodu göster'i aç, sonra kodu burada ya da kamera uygulamasıyla tara."),
                     style = TextStyle(fontFamily = MontserratMedium, fontSize = 13.sp), color = Color.Gray)
-                FilledTonalButton(onClick = pairWithPc) { Text("Scan code") }
+                FilledTonalButton(onClick = pairWithPc) { Text(t("Scan code", "Kodu tara")) }
             } else {
                 val state = when (link.state) {
-                    SyncLink.State.CONNECTED -> "Connected"
-                    SyncLink.State.NO_PERMISSION -> "Needs \"Nearby devices\" permission"
-                    SyncLink.State.SEARCHING -> "Looking for it… (same Wi-Fi? Manbo open there?)"
-                    else -> "Not connected"
+                    SyncLink.State.CONNECTED -> t("Connected", "Bağlı")
+                    SyncLink.State.NO_PERMISSION -> t("Needs \"Nearby devices\" permission", "\"Yakındaki cihazlar\" izni gerekiyor")
+                    SyncLink.State.SEARCHING -> t("Looking for it… (same Wi-Fi? Manbo open there?)",
+                        "Aranıyor… (aynı ağda mı? Manbo orada açık mı?)")
+                    else -> t("Not connected", "Bağlı değil")
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.weight(1f)) {
@@ -103,53 +108,78 @@ fun SettingsSheet(settings: Settings, ink: Color, openDndAccess: () -> Unit, pai
                         SyncStore.unpair()
                         SyncLink.restart()
                         SyncService.update(context)
-                    }) { Text("Unpair") }
+                    }) { Text(t("Unpair", "Eşleşmeyi kaldır")) }
                 }
                 if (link.state == SyncLink.State.NO_PERMISSION) {
-                    FilledTonalButton(onClick = pairWithPc) { Text("Allow and scan again") }
+                    FilledTonalButton(onClick = pairWithPc) { Text(t("Allow and scan again", "İzin ver ve tekrar tara")) }
                 }
-                Toggle("Stay connected in background",
-                    "So a session started on the PC starts here too (with Do Not Disturb). Shows a quiet notification.",
+                Toggle(t("Stay connected in background", "Arka planda bağlı kal"),
+                    t("So a session started on the PC starts here too (with Do Not Disturb). Shows a quiet notification.",
+                        "Bilgisayarda başlayan seans burada da başlasın (Rahatsız Etmeyin ile). Sessiz bir bildirim gösterir."),
                     settings.syncInBackground) { on ->
                     SettingsStore.update { it.copy(syncInBackground = on) }
                     SyncService.update(context)
                 }
             }
 
-            Heading("Appearance")
+            Heading(t("Appearance", "Görünüm"))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (t in THEMES) {
                     FilterChip(selected = settings.theme == t.key, onClick = { SettingsStore.update { it.copy(theme = t.key) } },
                         label = { Text(t.name) })
                 }
             }
-            Toggle("Rolling digits", "Digits roll as time passes and when the timer resets", settings.rollingDigits) { on ->
+            Toggle(t("Rolling digits", "Kayan rakamlar"),
+                t("Digits roll as time passes and when the timer resets", "Rakamlar zaman geçtikçe ve zamanlayıcı sıfırlanınca kayar"),
+                settings.rollingDigits) { on ->
                 SettingsStore.update { it.copy(rollingDigits = on) }
             }
 
-            Heading("Sound")
-            Toggle("Button sounds", "Clicks for the button and when switching modes", settings.buttonSounds) { on ->
+            Heading(t("Sound", "Ses"))
+            Toggle(t("Button sounds", "Buton sesleri"),
+                t("Clicks for the button and when switching modes", "Butona basınca ve mod değiştirince tık sesi"),
+                settings.buttonSounds) { on ->
                 SettingsStore.update { it.copy(buttonSounds = on) }
             }
-            Text("Chime", style = TextStyle(fontFamily = MontserratMedium, fontSize = 16.sp))
+            Text(t("Chime", "Zil"), style = TextStyle(fontFamily = MontserratMedium, fontSize = 16.sp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (len in Settings.CHIME_LENGTHS) {
                     FilterChip(selected = settings.chimeLength == len, onClick = {
                         SettingsStore.update { it.copy(chimeLength = len) }
                         Sounds.chime(context, SettingsStore.value)
-                    }, label = { Text(len.replaceFirstChar { it.uppercase() }) })
+                    }, label = { Text(CHIME_NAMES.getValue(len)()) })
                 }
             }
-            Text("Chime volume · ${settings.chimeVolume}%", style = TextStyle(fontFamily = MontserratMedium, fontSize = 16.sp))
+            Text(t("Chime volume · ${settings.chimeVolume}%", "Zil sesi · %${settings.chimeVolume}"), style = TextStyle(fontFamily = MontserratMedium, fontSize = 16.sp))
             Slider(
                 value = settings.chimeVolume.toFloat(), valueRange = 0f..100f,
                 enabled = settings.chimeLength != "off",
                 onValueChange = { v -> SettingsStore.update { it.copy(chimeVolume = v.toInt()) } },
                 onValueChangeFinished = { Sounds.chime(context, SettingsStore.value) },
             )
-        }
+
+            Heading(t("Language", "Dil"))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (lang in Lang.LANGUAGES) {
+                    FilterChip(selected = settings.language == lang, onClick = {
+                        SettingsStore.update { it.copy(language = lang) }
+                        Notifications.createChannels(context)   // channel names in the new language
+                    }, label = { Text(LANGUAGE_NAMES.getValue(lang)()) })
+                }
+            }
+        } }
     }
 }
+
+private val CHIME_NAMES = mapOf<String, () -> String>(
+    "off" to { t("Off", "Kapalı") }, "short" to { t("Short", "Kısa") },
+    "normal" to { t("Normal", "Normal") }, "long" to { t("Long", "Uzun") },
+)
+
+// each language in its own words, "system" in the current one
+private val LANGUAGE_NAMES = mapOf<String, () -> String>(
+    "system" to { t("System", "Sistem") }, "en" to { "English" }, "tr" to { "Türkçe" },
+)
 
 @Composable
 private fun Heading(text: String) {

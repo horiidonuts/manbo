@@ -1,6 +1,8 @@
 """The "Pair a phone" dialog: a QR code for Manbo on the phone to scan."""
 
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, GLib, Gtk
+
+from .i18n import t
 
 try:
     import qrcode
@@ -20,7 +22,7 @@ def _matrix(text):
 
 class PairDialog(Adw.Dialog):
     def __init__(self, sync):
-        super().__init__(title="Pair a phone", content_width=360)
+        super().__init__(title=t("Pair a phone", "Telefon eşleştir"), content_width=360)
         self._sync = sync
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18,
@@ -31,15 +33,17 @@ class PairDialog(Adw.Dialog):
         self.set_child(toolbar)
 
         steps = Gtk.Label(
-            label="Scan this with your phone's camera, or in Manbo on the phone: "
-                  "Settings → <b>Scan code</b>.",
+            label=t("Scan this with your phone's camera, or in Manbo on the phone: "
+                    "Settings → <b>Scan code</b>.",
+                    "Bunu telefonun kamerasıyla ya da telefondaki Manbo'da tara: "
+                    "Ayarlar → <b>Kodu tara</b>."),
             use_markup=True, wrap=True, justify=Gtk.Justification.CENTER,
         )
         box.append(steps)
 
         if qrcode is None:
             box.append(Gtk.Label(
-                label="The QR code needs the python3-qrcode package.",
+                label=t("The QR code needs the python3-qrcode package.", "QR kod için python3-qrcode paketi gerekiyor."),
                 css_classes=["error"], wrap=True,
             ))
         else:
@@ -51,7 +55,7 @@ class PairDialog(Adw.Dialog):
         self._status = Gtk.Label(css_classes=["dim-label"], wrap=True, justify=Gtk.Justification.CENTER)
         box.append(self._status)
         box.append(Gtk.Label(
-            label="Both need to be on the same network.",
+            label=t("Both need to be on the same network.", "İkisi de aynı ağda olmalı."),
             css_classes=["dim-label", "caption"], wrap=True,
         ))
 
@@ -82,10 +86,10 @@ class PairDialog(Adw.Dialog):
         phones = self._sync.phones
         new = [p for p in phones if p not in self._known]
         if new:
-            self._status.set_markup(f"<b>Paired with {new[0]}</b> ✓")
+            self._status.set_markup(t("<b>Paired with {}</b> ✓", "<b>{} ile eşleşti</b> ✓").format(GLib.markup_escape_text(new[0])))
             self._status.remove_css_class("dim-label")
             self._status.add_css_class("success")
         elif phones:
-            self._status.set_label(f"Connected: {', '.join(phones)}")
+            self._status.set_label(t("Connected: {}", "Bağlı: {}").format(", ".join(phones)))
         else:
-            self._status.set_label("Waiting for the phone…")
+            self._status.set_label(t("Waiting for the phone…", "Telefon bekleniyor…"))

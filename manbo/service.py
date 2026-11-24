@@ -16,6 +16,7 @@ import json
 
 from gi.repository import Gio, GLib
 
+from .i18n import turkish
 from .themes import palette
 from .timer import MODES
 
@@ -40,6 +41,8 @@ XML = f"""
     <!-- colors of the current theme + mode: "bg", "button", "text" (#rrggbb) -->
     <property name="Palette" type="a{{ss}}" access="read"/>
     <!-- goes up by one on every change: the newest state wins when syncing -->
+    <!-- "en" or "tr": the language Manbo shows, for the widget and the extension -->
+    <property name="Language" type="s" access="read"/>
     <property name="Version" type="t" access="read"/>
     <method name="Toggle"/>
     <method name="Start"/>
@@ -61,7 +64,7 @@ XML = f"""
 _TYPES = {
     "Mode": "s", "Running": "b", "Remaining": "u", "EndTime": "x",
     "Duration": "u", "CompletedSessions": "u", "CyclePosition": "u",
-    "LongBreakInterval": "u", "Palette": "a{ss}", "Version": "t",
+    "LongBreakInterval": "u", "Palette": "a{ss}", "Language": "s", "Version": "t",
 }
 
 
@@ -106,6 +109,7 @@ class ManboService:
             "CyclePosition": t.cycle_position,
             "LongBreakInterval": self._settings["long_break_interval"],
             "Palette": dict(palette(self._settings["theme"], t.mode)),
+            "Language": "tr" if turkish() else "en",
             "Version": self._version,
         }
 

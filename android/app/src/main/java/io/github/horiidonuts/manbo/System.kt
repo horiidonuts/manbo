@@ -65,19 +65,21 @@ object Notifications {
 
     fun createChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel(CH_TIMER, "Running timer", NotificationManager.IMPORTANCE_LOW).apply {
-            description = "The countdown while a session runs"
+        nm.createNotificationChannel(NotificationChannel(CH_TIMER, t("Running timer", "Çalışan zamanlayıcı"), NotificationManager.IMPORTANCE_LOW).apply {
+            description = t("The countdown while a session runs", "Seans sürerken geri sayım")
             setShowBadge(false)
         })
         nm.deleteNotificationChannel("session_end")   // 0.3.0's channel, which played the chime itself
-        nm.createNotificationChannel(NotificationChannel(CH_END, "Session finished", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "When a focus session or break is over (Manbo plays its chime itself)"
+        nm.createNotificationChannel(NotificationChannel(CH_END, t("Session finished", "Seans bitti"), NotificationManager.IMPORTANCE_HIGH).apply {
+            description = t("When a focus session or break is over (Manbo plays its chime itself)",
+                "Odak seansı ya da mola bitince (zili Manbo kendisi çalar)")
             setSound(null, null)
             enableVibration(true)
             vibrationPattern = longArrayOf(0, 120, 80, 120)
         })
-        nm.createNotificationChannel(NotificationChannel(CH_SYNC, "PC sync", NotificationManager.IMPORTANCE_MIN).apply {
-            description = "Shown while Manbo stays connected to your PC in the background"
+        nm.createNotificationChannel(NotificationChannel(CH_SYNC, t("PC sync", "Bilgisayarla senkron"), NotificationManager.IMPORTANCE_MIN).apply {
+            description = t("Shown while Manbo stays connected to your PC in the background",
+                "Manbo arka planda bilgisayarına bağlıyken görünür")
             setShowBadge(false)
         })
     }
@@ -108,7 +110,7 @@ object Notifications {
         val n = NotificationCompat.Builder(context, CH_TIMER)
             .setSmallIcon(R.drawable.ic_stat_manbo)
             .setContentTitle(s.mode.label)
-            .setContentText("Ends at $endsAt")
+            .setContentText(t("Ends at $endsAt", "Bitiş: $endsAt"))
             .setWhen(s.endAt)
             .setShowWhen(true)
             .setUsesChronometer(true)
@@ -119,7 +121,7 @@ object Notifications {
             .setCategory(Notification.CATEGORY_STOPWATCH)
             .setRequestPromotedOngoing(true)
             .setContentIntent(openApp(context))
-            .addAction(0, "Pause", toggleAction(context))
+            .addAction(0, t("Pause", "Duraklat"), toggleAction(context))
             .build()
         nm.notify(ID_ONGOING, n)
     }
@@ -131,28 +133,34 @@ object Notifications {
 
     fun sessionEndNotification(context: Context, finished: Mode, next: Mode): Notification {
         val title = when (finished) {
-            Mode.FOCUS -> "Focus session done"
-            Mode.SHORT -> "Break is over"
-            Mode.LONG -> "Long break is over"
+            Mode.FOCUS -> t("Focus session done", "Odak seansı bitti")
+            Mode.SHORT -> t("Break is over", "Mola bitti")
+            Mode.LONG -> t("Long break is over", "Uzun mola bitti")
+        }
+        val start = when (next) {
+            Mode.FOCUS -> t("Start focus", "Odağı başlat")
+            Mode.SHORT -> t("Start short break", "Kısa molayı başlat")
+            Mode.LONG -> t("Start long break", "Uzun molayı başlat")
         }
         val n = NotificationCompat.Builder(context, CH_END)
             .setSmallIcon(R.drawable.ic_stat_manbo)
             .setContentTitle(title)
-            .setContentText("Next up: ${next.label.lowercase()}.")
+            .setContentText(t("Next up: ${next.label.lowercase(Lang.locale)}.", "Sırada: ${next.label.lowercase(Lang.locale)}."))
             .setCategory(Notification.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(openApp(context))
-            .addAction(0, "Start ${next.label.lowercase()}", toggleAction(context))
+            .addAction(0, start, toggleAction(context))
             .build()
         return n
     }
 
     fun syncNotification(context: Context, st: SyncLink.Status): Notification {
         val text = when (st.state) {
-            SyncLink.State.CONNECTED -> "Synced with ${st.pc}"
-            SyncLink.State.NO_PERMISSION -> "Allow \"Nearby devices\" to sync with your PC"
-            else -> "Looking for ${st.pc.ifEmpty { "your PC" }}…"
+            SyncLink.State.CONNECTED -> t("Synced with ${st.pc}", "${st.pc} ile senkron")
+            SyncLink.State.NO_PERMISSION -> t("Allow \"Nearby devices\" to sync with your PC",
+                "Bilgisayarınla senkron için \"Yakındaki cihazlar\" iznini ver")
+            else -> t("Looking for ${st.pc.ifEmpty { "your PC" }}…", "${st.pc.ifEmpty { "Bilgisayarın" }} aranıyor…")
         }
         return NotificationCompat.Builder(context, CH_SYNC)
             .setSmallIcon(R.drawable.ic_stat_manbo)

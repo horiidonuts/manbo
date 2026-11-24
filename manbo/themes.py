@@ -8,6 +8,7 @@ text   -> labels, icons, and the tint used for shading
 THEMES = {
     "blossom": {
         "name": "Blossom",
+        "name_tr": "Çiçek",
         "modes": {
             "focus": {"bg": "#FFE5D9", "button": "#F4ACB7", "text": "#7E6770"},
             "short": {"bg": "#D8E2DC", "button": "#F4ACB7", "text": "#7E6770"},
@@ -16,6 +17,7 @@ THEMES = {
     },
     "cotton": {
         "name": "Cotton Candy",
+        "name_tr": "Pamuk Şeker",
         "modes": {
             "focus": {"bg": "#FFC8DD", "button": "#CDB4DB", "text": "#5E4B70"},
             "short": {"bg": "#BDE0FE", "button": "#FFAFCC", "text": "#5E4B70"},
@@ -24,6 +26,7 @@ THEMES = {
     },
     "coastal": {
         "name": "Coastal",
+        "name_tr": "Sahil",
         "modes": {
             "focus": {"bg": "#F8F4F1", "button": "#CEAAA1", "text": "#3B7DA1"},
             "short": {"bg": "#EAF0F2", "button": "#98B9CB", "text": "#3B7DA1"},
@@ -32,6 +35,7 @@ THEMES = {
     },
     "frosty": {
         "name": "Frosty",
+        "name_tr": "Ayaz",
         "modes": {
             "focus": {"bg": "#DAF5FE", "button": "#A0DCF0", "text": "#3C7390"},
             "short": {"bg": "#CAEFFB", "button": "#7EC4DC", "text": "#3C7390"},
@@ -40,6 +44,7 @@ THEMES = {
     },
     "periwinkle": {
         "name": "Periwinkle",
+        "name_tr": "Menekşe",
         "modes": {
             "focus": {"bg": "#F5EFFF", "button": "#A594F9", "text": "#4F4AB8"},
             "short": {"bg": "#E5D9F2", "button": "#7371FC", "text": "#4F4AB8"},
@@ -48,6 +53,7 @@ THEMES = {
     },
     "golden": {
         "name": "Golden Summer",
+        "name_tr": "Altın Yaz",
         "modes": {
             "focus": {"bg": "#FEFAE0", "button": "#D4A373", "text": "#7A5C3A"},
             "short": {"bg": "#E9EDC9", "button": "#D4A373", "text": "#7A5C3A"},
@@ -56,6 +62,7 @@ THEMES = {
     },
     "autumn": {
         "name": "Autumn",
+        "name_tr": "Sonbahar",
         "modes": {
             "focus": {"bg": "#F7E4BE", "button": "#F0B49E", "text": "#413E4A"},
             "short": {"bg": "#F0B49E", "button": "#F7E4BE", "text": "#413E4A"},

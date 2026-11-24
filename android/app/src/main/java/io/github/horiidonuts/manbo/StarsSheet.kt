@@ -55,14 +55,14 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.TextStyle as DateTextStyle
-import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
 
-private val DAY_NAMES = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+private val DAY_NAMES get() = if (Lang.turkish) listOf("Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz")
+    else listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 private const val STAR_R_DP = 8.5f
 private const val LABEL_BAND_DP = 40f
 
@@ -161,11 +161,14 @@ fun StarsSheet(theme: String, onDismiss: () -> Unit) {
     var picked by remember { mutableStateOf<Session?>(null) }
 
     val weekLabel = when (offset) {
-        0 -> "This week"
-        1 -> "Last week"
+        0 -> t("This week", "Bu hafta")
+        1 -> t("Last week", "Geçen hafta")
         else -> {
             val sunday = monday.plusDays(6)
-            fun d(x: LocalDate) = "${x.month.getDisplayName(DateTextStyle.SHORT, Locale.ENGLISH)} ${x.dayOfMonth}"
+            fun d(x: LocalDate): String {
+                val month = x.month.getDisplayName(DateTextStyle.SHORT, Lang.locale)
+                return t("$month ${x.dayOfMonth}", "${x.dayOfMonth} $month")
+            }
             "${d(monday)} – ${d(sunday)}"
         }
     }
@@ -188,16 +191,16 @@ fun StarsSheet(theme: String, onDismiss: () -> Unit) {
         // the twilight behind everything: title, week, stars and stats all sit on one sky
         Column(Modifier.verticalScroll(rememberScrollState()).drawBehind { paintSky(colors.star) }) {
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Your stars", style = TextStyle(fontFamily = MontserratBold, fontSize = 22.sp),
+                Text(t("Your stars", "Yıldızların"), style = TextStyle(fontFamily = MontserratBold, fontSize = 22.sp),
                     modifier = Modifier.padding(start = 4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { offset++; picked = null }, enabled = monday > first) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous week")
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = t("Previous week", "Önceki hafta"))
                     }
                     Text(weekLabel, style = TextStyle(fontFamily = MontserratMedium, fontSize = 16.sp),
                         textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
                     IconButton(onClick = { offset--; picked = null }, enabled = offset > 0) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next week")
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = t("Next week", "Sonraki hafta"))
                     }
                 }
             }
@@ -211,22 +214,26 @@ fun StarsSheet(theme: String, onDismiss: () -> Unit) {
                             val t = Instant.ofEpochMilli(it.end).atZone(ZoneId.systemDefault())
                             "%s %02d:%02d · %s".format(DAY_NAMES[t.dayOfWeek.value - 1], t.hour, t.minute,
                                 StarMath.formatMinutes(it.minutes))
-                        } ?: "Tap a star to see when you earned it",
+                        } ?: t("Tap a star to see when you earned it", "Ne zaman kazandığını görmek için bir yıldıza dokun"),
                         style = TextStyle(fontSize = 13.sp), color = colors.star.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Stat(if (s.todayStars == 1) "1 star" else "${s.todayStars} stars",
-                            if (s.todayStars > 0) "today · ${StarMath.formatMinutes(s.todayMinutes)}" else "today",
+                        Stat(t(if (s.todayStars == 1) "1 star" else "${s.todayStars} stars", "${s.todayStars} yıldız"),
+                            t("today", "bugün") + if (s.todayStars > 0) " · ${StarMath.formatMinutes(s.todayMinutes)}" else "",
                             colors, Modifier.weight(1f))
-                        Stat("${s.streak}", if (s.streak == 1) "day in a row" else "days in a row",
+                        Stat("${s.streak}", t(if (s.streak == 1) "day in a row" else "days in a row", "gün üst üste"),
                             colors, Modifier.weight(1f))
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Stat(StarMath.formatMinutes(StarMath.weekMinutes(days, monday)),
-                            if (offset < 2) "focused ${weekLabel.lowercase()}" else "focused that week",
+                            when (offset) {
+                                0 -> t("focused this week", "bu hafta odak")
+                                1 -> t("focused last week", "geçen hafta odak")
+                                else -> t("focused that week", "o hafta odak")
+                            },
                             colors, Modifier.weight(1f))
-                        Stat("${s.totalStars}", if (s.totalStars == 1) "star in all" else "stars in all",
+                        Stat("${s.totalStars}", t(if (s.totalStars == 1) "star in all" else "stars in all", "toplam yıldız"),
                             colors, Modifier.weight(1f))
                     }
                 }
@@ -254,8 +261,9 @@ private fun Sky(
 ) {
     val measurer = rememberTextMeasurer()
     val drawn = remember { ArrayList<DrawnStar>() }
-    val emptyText = if (monday == StarMath.weekStart(today)) "Finish a focus session to light your first star"
-        else "No stars this week"
+    val emptyText = if (monday == StarMath.weekStart(today))
+        t("Finish a focus session to light your first star", "İlk yıldızını yakmak için bir odak seansı bitir")
+        else t("No stars this week", "Bu hafta yıldız yok")
     Canvas(
         Modifier
             .fillMaxWidth()

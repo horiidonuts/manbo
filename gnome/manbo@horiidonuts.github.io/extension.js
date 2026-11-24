@@ -18,7 +18,12 @@ const BUS_NAME = 'io.github.horiidonuts.Manbo';
 const OBJECT_PATH = '/io/github/horiidonuts/Manbo';
 const IFACE = 'io.github.horiidonuts.Manbo1';
 const MODES = ['focus', 'short', 'long'];
-const MODE_NAMES = {focus: 'Focus', short: 'Short break', long: 'Long break'};
+// Manbo's language (Preferences → Language) comes with its state; the system's until then
+let turkish = GLib.get_language_names()[0].toLowerCase().startsWith('tr');
+const t = (en, tr) => (turkish ? tr : en);
+const modeName = mode => ({
+    focus: t('Focus', 'Odak'), short: t('Short break', 'Kısa mola'), long: t('Long break', 'Uzun mola'),
+})[mode];
 const FALLBACK_COLOR = '#F4ACB7';
 const HANDOFF_MS = 500;   // same beat as the app: show the finished session, then move on
 
@@ -47,11 +52,11 @@ class ManboIndicator extends PanelMenu.Button {
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this._modeItems = {};
         for (const mode of MODES) {
-            this._modeItems[mode] = this.menu.addAction(MODE_NAMES[mode],
+            this._modeItems[mode] = this.menu.addAction(modeName(mode),
                 () => this._call('SelectMode', new GLib.Variant('(s)', [mode])));
         }
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this.menu.addAction('Open Manbo', () => this._openApp());
+        this._openItem = this.menu.addAction(t('Open Manbo', "Manbo'yu aç"), () => this._openApp());
 
         this._signalId = Gio.DBus.session.signal_subscribe(
             BUS_NAME, IFACE, 'StateChanged', OBJECT_PATH, null, Gio.DBusSignalFlags.NONE,
@@ -161,13 +166,19 @@ class ManboIndicator extends PanelMenu.Button {
 
     _render() {
         const s = this._state;
+        if (s && s.language)
+            turkish = s.language === 'tr';
+        this._resetItem.label.text = t('Reset', 'Sıfırla');
+        this._openItem.label.text = t('Open Manbo', "Manbo'yu aç");
+        for (const [mode, item] of Object.entries(this._modeItems))
+            item.label.text = modeName(mode);
         const color = s && s.palette ? s.palette.button : FALLBACK_COLOR;
         // filled while running, a ring while paused
         this._dot.set_style(`border-color: ${color}; background-color: ${s && s.running ? color : 'transparent'};`);
         if (!s) {
             this._label.text = '--:--';
             this.add_style_class_name('manbo-offline');
-            this._header.label.text = 'Manbo isn\'t running';
+            this._header.label.text = t('Manbo isn\'t running', 'Manbo çalışmıyor');
             this._toggleItem.visible = this._resetItem.visible = false;
             for (const item of Object.values(this._modeItems))
                 item.visible = false;
@@ -177,9 +188,10 @@ class ManboIndicator extends PanelMenu.Button {
         const secs = this._remaining();
         const m = Math.floor(secs / 60), sec = secs % 60;
         this._label.text = `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-        this._header.label.text = `${MODE_NAMES[s.mode]} · ${s.cyclePosition} of ${s.longBreakInterval} sessions`;
+        this._header.label.text = t(`${modeName(s.mode)} · ${s.cyclePosition} of ${s.longBreakInterval} sessions`,
+            `${modeName(s.mode)} · seans ${s.cyclePosition}/${s.longBreakInterval}`);
         this._toggleItem.visible = this._resetItem.visible = true;
-        this._toggleItem.label.text = s.running ? 'Pause' : 'Start';
+        this._toggleItem.label.text = s.running ? t('Pause', 'Duraklat') : t('Start', 'Başlat');
         for (const [mode, item] of Object.entries(this._modeItems)) {
             item.visible = true;
             item.setOrnament(mode === s.mode ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);

@@ -5,11 +5,11 @@ corner. Keeping it above other windows needs KWin (see kwin.py).
 
 from gi.repository import Gdk, GLib, Gtk
 
+from .i18n import t
 from .kwin import keep_above
 from .timedisplay import TimeDisplay
 
 TITLE = "Manbo mini"   # constant: KWin finds the window by this title
-MODE_LABELS = {"focus": "FOCUS", "short": "BREAK", "long": "LONG BREAK"}
 PLACE_DELAY_MS = 120   # let KWin map the window before we place it
 
 
@@ -31,8 +31,8 @@ class MiniWindow(Gtk.Window):
             css_classes=["flat", "circular"], valign=Gtk.Align.CENTER, focusable=False,
         )
         self._toggle.connect("clicked", lambda *_: self._timer.toggle())
-        expand = Gtk.Button(
-            icon_name="window-maximize-symbolic", tooltip_text="Back to full window (Esc)",
+        expand = self._expand = Gtk.Button(
+            icon_name="window-maximize-symbolic",
             css_classes=["flat", "circular"], valign=Gtk.Align.CENTER, focusable=False,
         )
         expand.connect("clicked", lambda *_: main.leave_mini())
@@ -72,10 +72,14 @@ class MiniWindow(Gtk.Window):
             for cls in classes:
                 self.add_css_class(cls)
             self._theme_classes = classes
-        self._mode.set_label(MODE_LABELS[mode])
+        self._mode.set_label({
+            "focus": t("FOCUS", "ODAK"), "short": t("BREAK", "MOLA"), "long": t("LONG BREAK", "UZUN MOLA"),
+        }[mode])
         running = self._timer.running
         self._toggle.set_icon_name("media-playback-pause-symbolic" if running else "media-playback-start-symbolic")
-        self._toggle.set_tooltip_text("Pause (Space)" if running else "Start (Space)")
+        self._toggle.set_tooltip_text(t("Pause (Space)", "Duraklat (Boşluk)") if running
+                                      else t("Start (Space)", "Başlat (Boşluk)"))
+        self._expand.set_tooltip_text(t("Back to full window (Esc)", "Tam pencereye dön (Esc)"))
         self._update_time(animate)
 
     def _update_time(self, animate=True):

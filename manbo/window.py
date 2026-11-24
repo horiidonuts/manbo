@@ -8,10 +8,20 @@ from .mini import MiniWindow
 from .timedisplay import TimeDisplay
 from .sounds import CHIME_STARTS
 from .themes import palette
+from .i18n import lower, t, upper
 from .timer import FOCUS, LONG, SHORT
 
-MODE_TITLES = {FOCUS: "FOCUS", SHORT: "SHORT BREAK", LONG: "LONG BREAK"}
-MODE_NAMES = {FOCUS: "Focus", SHORT: "Short break", LONG: "Long break"}
+
+def mode_name(mode):
+    return {
+        FOCUS: t("Focus", "Odak"),
+        SHORT: t("Short break", "Kısa mola"),
+        LONG: t("Long break", "Uzun mola"),
+    }[mode]
+
+
+def mode_title(mode):
+    return upper(mode_name(mode))
 
 # Keep the audio device awake from shortly before a session ends until the
 # (longest) chime has finished, so the chime isn't cut when the window is in
@@ -25,11 +35,13 @@ RAISE_BEFORE_END_MS = 1000
 # colors and clock move on to the next session (so it reads as two beats).
 HANDOFF_MS = 500
 
-NOTIFY_TEXT = {
-    FOCUS: "Focus session done",
-    SHORT: "Break is over",
-    LONG: "Long break is over",
-}
+
+def notify_text(mode):
+    return {
+        FOCUS: t("Focus session done", "Odak seansı bitti"),
+        SHORT: t("Break is over", "Mola bitti"),
+        LONG: t("Long break is over", "Uzun mola bitti"),
+    }[mode]
 
 
 class ManboWindow(Adw.ApplicationWindow):
@@ -71,24 +83,9 @@ class ManboWindow(Adw.ApplicationWindow):
     # -- UI ------------------------------------------------------------------
 
     def _build_ui(self):
-        menu = Gio.Menu()
-        menu.append("Preferences", "app.preferences")
-        menu.append("About Manbo", "app.about")
-        menu.append("Quit", "app.quit")
-        self.menu_button = Gtk.MenuButton(
-            icon_name="open-menu-symbolic", menu_model=menu, primary=True,
-            tooltip_text="Menu",
-        )
-
-        mini = Gtk.Button(
-            icon_name="manbo-mini-symbolic", tooltip_text="Mini mode (Ctrl+M)",
-            action_name="app.mini",
-        )
-
-        stars = Gtk.Button(
-            icon_name="manbo-stars-symbolic", tooltip_text="Your stars (Ctrl+S)",
-            action_name="app.stars",
-        )
+        self.menu_button = Gtk.MenuButton(icon_name="open-menu-symbolic", primary=True)
+        mini = self._mini_button = Gtk.Button(icon_name="manbo-mini-symbolic", action_name="app.mini")
+        stars = self._stars_button = Gtk.Button(icon_name="manbo-stars-symbolic", action_name="app.stars")
 
         header = Adw.HeaderBar(show_title=False)
         header.add_css_class("flat")
@@ -96,7 +93,7 @@ class ManboWindow(Adw.ApplicationWindow):
         header.pack_end(stars)
         header.pack_start(mini)
 
-        self.wheel = ModeWheel([(m, MODE_TITLES[m]) for m in (FOCUS, SHORT, LONG)])
+        self.wheel = ModeWheel([(m, mode_title(m)) for m in (FOCUS, SHORT, LONG)])
         self.wheel.connect("selected", self._on_mode_selected)
         self.time_label = TimeDisplay()
         self.dots = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER)
@@ -105,8 +102,8 @@ class ManboWindow(Adw.ApplicationWindow):
         self.button.connect("activated", lambda *_: self.timer.toggle())
         self.button.connect("down-changed", self._on_button_moved)
 
-        reset = Gtk.Button(
-            icon_name="view-refresh-symbolic", tooltip_text="Reset session",
+        reset = self._reset_button = Gtk.Button(
+            icon_name="view-refresh-symbolic",
             css_classes=["flat", "circular", "round-action"], focusable=False,
         )
         reset.connect("clicked", lambda *_: (self._cancel_handoff(), self.timer.reset()))
@@ -126,6 +123,20 @@ class ManboWindow(Adw.ApplicationWindow):
         view.add_top_bar(header)
         view.set_content(content)
         self.set_content(view)
+        self._set_texts()
+
+    def _set_texts(self):
+        """Menu, tooltips and mode names in the current language."""
+        menu = Gio.Menu()
+        menu.append(t("Preferences", "Tercihler"), "app.preferences")
+        menu.append(t("About Manbo", "Manbo hakkında"), "app.about")
+        menu.append(t("Quit", "Çık"), "app.quit")
+        self.menu_button.set_menu_model(menu)
+        self.menu_button.set_tooltip_text(t("Menu", "Menü"))
+        self._mini_button.set_tooltip_text(t("Mini mode (Ctrl+M)", "Mini mod (Ctrl+M)"))
+        self._stars_button.set_tooltip_text(t("Your stars (Ctrl+S)", "Yıldızların (Ctrl+S)"))
+        self._reset_button.set_tooltip_text(t("Reset session", "Seansı sıfırla"))
+        self.wheel.set_titles(mode_title(m) for m in (FOCUS, SHORT, LONG))
 
     def _rebuild_dots(self):
         while (child := self.dots.get_first_child()) is not None:
@@ -205,7 +216,7 @@ class ManboWindow(Adw.ApplicationWindow):
         secs = self.display_seconds
         self.time_label.set_seconds(secs, animate and self.settings["clock_animations"])
         text = self.time_label.text
-        title = f"{text} · {MODE_NAMES[self.display_mode]}" if self.timer.running else APP_NAME
+        title = f"{text} · {mode_name(self.display_mode)}" if self.timer.running else APP_NAME
         if self.get_title() != title:
             self.set_title(title)
         if self.timer.running and self.timer.remaining_us <= WAKE_BEFORE_END_MS * 1000:
@@ -263,8 +274,8 @@ class ManboWindow(Adw.ApplicationWindow):
         self._ending_hold = GLib.timeout_add(KEEP_AWAKE_AFTER_END_MS, self._release_ending)
         self.play_chime()
         if not self.is_active() and not self.mini_shown:  # the always-on-top pill shows it already
-            note = Gio.Notification.new(NOTIFY_TEXT[finished])
-            note.set_body(f"Next up: {MODE_NAMES[nxt].lower()}.")
+            note = Gio.Notification.new(notify_text(finished))
+            note.set_body(t("Next up: {}.", "Sırada: {}.").format(lower(mode_name(nxt))))
             # Urgent = "critical" urgency, which Do Not Disturb lets through
             # (KDE: on by default; GNOME shows urgent ones too). The user turns
             # DND on to focus — the end-of-session alert must still arrive.
@@ -310,6 +321,8 @@ class ManboWindow(Adw.ApplicationWindow):
     def _on_settings_changed(self, _settings, key):
         if key == "long_break_interval":
             self._rebuild_dots()
+        if key == "language":
+            self._set_texts()
         self._sync()
 
     def _on_key(self, _ctrl, keyval, _keycode, state):

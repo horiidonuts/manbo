@@ -18,6 +18,7 @@ data class Settings(
     val rollingDigits: Boolean = true,
     val dndDuringFocus: Boolean = false,
     val syncInBackground: Boolean = true,   // stay connected to the paired PC while closed
+    val language: String = "system",        // system / en / tr (Strings.kt)
     // when / on which device the durations last changed (they sync with the PC; newest wins)
     val durStamp: Long = 0,
     val durBy: String = "",
@@ -67,6 +68,7 @@ object SettingsStore {
             rollingDigits = prefs.getBoolean("rolling_digits", d.rollingDigits),
             dndDuringFocus = prefs.getBoolean("dnd_during_focus", d.dndDuringFocus),
             syncInBackground = prefs.getBoolean("sync_background", d.syncInBackground),
+            language = prefs.getString("language", d.language) ?: d.language,
             durStamp = prefs.getLong("durations_stamp", 0),
             durBy = prefs.getString("durations_by", "") ?: "",
         )
@@ -92,6 +94,7 @@ object SettingsStore {
             .putBoolean("rolling_digits", s.rollingDigits)
             .putBoolean("dnd_during_focus", s.dndDuringFocus)
             .putBoolean("sync_background", s.syncInBackground)
+            .putString("language", s.language)
             .putLong("durations_stamp", s.durStamp)
             .putString("durations_by", s.durBy)
             .apply()

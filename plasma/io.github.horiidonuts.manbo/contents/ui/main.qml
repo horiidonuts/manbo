@@ -21,8 +21,15 @@ PlasmoidItem {
     readonly property string objectPath: "/io/github/horiidonuts/Manbo"
     readonly property string iface: "io.github.horiidonuts.Manbo1"
     readonly property var modes: ["focus", "short", "long"]
-    readonly property var modeTitles: ({focus: "FOCUS", short: "SHORT BREAK", long: "LONG BREAK"})
-    readonly property var modeNames: ({focus: "Focus", short: "Short break", long: "Long break"})
+    // Manbo's language (Preferences → Language) once it's running; the system's until then
+    property string lang: Qt.locale().name.startsWith("tr") ? "tr" : "en"
+    onManboStateChanged: if (manboState && manboState.language) lang = manboState.language
+    readonly property bool turkish: lang === "tr"
+    function t(en, tr) { return turkish ? tr : en }
+    readonly property var modeTitles: turkish ? ({focus: "ODAK", short: "KISA MOLA", long: "UZUN MOLA"})
+        : ({focus: "FOCUS", short: "SHORT BREAK", long: "LONG BREAK"})
+    readonly property var modeNames: turkish ? ({focus: "Odak", short: "Kısa mola", long: "Uzun mola"})
+        : ({focus: "Focus", short: "Short break", long: "Long break"})
     // shown while Manbo isn't running (Blossom / focus)
     readonly property var fallbackPalette: ({bg: "#FFE5D9", button: "#F4ACB7", text: "#7E6770"})
 
@@ -140,7 +147,9 @@ PlasmoidItem {
     Plasmoid.icon: "io.github.horiidonuts.Manbo"
     Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
     toolTipMainText: connected ? "Manbo · " + modeNames[mode] : "Manbo"
-    toolTipSubText: !connected ? "Not running — click to open"
+    toolTipSubText: !connected ? t("Not running — click to open", "Çalışmıyor — açmak için tıkla")
+        : turkish ? (running ? "Çalışıyor" : "Duraklatıldı") + " · " + timeText + " kaldı · odak seansı "
+                    + cyclePosition + "/" + interval
         : (running ? "Running" : "Paused") + " · " + timeText + " left · "
           + cyclePosition + " of " + interval + " focus sessions"
 
