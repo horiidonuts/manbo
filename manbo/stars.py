@@ -5,7 +5,7 @@ import math
 
 import cairo
 
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, Gtk, Pango, PangoCairo
 
 from .i18n import t, turkish
 from .history import (
@@ -225,15 +225,20 @@ class SkyView(Gtk.DrawingArea):
                 self._stars.append((x, y, end, minutes))
 
         if not any_stars:
-            cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-            cr.set_font_size(13)
             cr.set_source_rgba(*colors["star"], 0.75)
-            text = (t("Finish a focus session to light your first star",
-                      "İlk yıldızını yakmak için bir odak seansı bitir")
-                    if self.monday == week_start(today) else t("No stars this week", "Bu hafta yıldız yok"))
-            ext = cr.text_extents(text)
-            cr.move_to(w / 2 - ext.x_advance / 2, sky_h / 2)
-            cr.show_text(text)
+            text = (t("The sky's a little empty… shall we light the first star? 🌙",
+                      "Gökyüzü biraz boş… ilk yıldızı yakalım mı? 🌙")
+                    if self.monday == week_start(today)
+                    else t("A quiet week in the sky 🌙", "Gökyüzü bu hafta sessizdi 🌙"))
+            layout = self.create_pango_layout(text)
+            desc = self.get_pango_context().get_font_description().copy()
+            desc.set_absolute_size(13 * Pango.SCALE)
+            layout.set_font_description(desc)
+            layout.set_width(int((w - 64) * Pango.SCALE))   # wraps on narrow windows
+            layout.set_alignment(Pango.Alignment.CENTER)
+            _lw, lh = layout.get_pixel_size()
+            cr.move_to(32, sky_h / 2 - lh / 2 - 4)
+            PangoCairo.show_layout(cr, layout)
 
     def _on_tooltip(self, _area, x, y, _keyboard, tooltip):
         best = min(self._stars, key=lambda s: math.hypot(s[0] - x, s[1] - y), default=None)

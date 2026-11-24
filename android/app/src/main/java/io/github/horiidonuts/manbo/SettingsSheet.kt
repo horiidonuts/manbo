@@ -93,11 +93,12 @@ fun SettingsSheet(settings: Settings, ink: Color, openDndAccess: () -> Unit, pai
                 FilledTonalButton(onClick = pairWithPc) { Text(t("Scan code", "Kodu tara")) }
             } else {
                 val state = when (link.state) {
-                    SyncLink.State.CONNECTED -> t("Connected", "Bağlı")
-                    SyncLink.State.NO_PERMISSION -> t("Needs \"Nearby devices\" permission", "\"Yakındaki cihazlar\" izni gerekiyor")
-                    SyncLink.State.SEARCHING -> t("Looking for it… (same Wi-Fi? Manbo open there?)",
-                        "Aranıyor… (aynı ağda mı? Manbo orada açık mı?)")
-                    else -> t("Not connected", "Bağlı değil")
+                    SyncLink.State.CONNECTED -> t("Connected 💞", "Bağlı 💞")
+                    SyncLink.State.NO_PERMISSION -> t("I need the \"Nearby devices\" permission 🙏",
+                        "\"Yakındaki cihazlar\" izni lazım 🙏")
+                    SyncLink.State.SEARCHING -> t("Looking for it 🔍 same Wi-Fi? Manbo open there?",
+                        "Arıyorum 🔍 aynı ağda mısın? Manbo orada açık mı?")
+                    else -> t("Not connected right now", "Şu an bağlı değil")
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.weight(1f)) {

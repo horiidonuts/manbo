@@ -214,7 +214,7 @@ fun StarsSheet(theme: String, onDismiss: () -> Unit) {
                             val t = Instant.ofEpochMilli(it.end).atZone(ZoneId.systemDefault())
                             "%s %02d:%02d · %s".format(DAY_NAMES[t.dayOfWeek.value - 1], t.hour, t.minute,
                                 StarMath.formatMinutes(it.minutes))
-                        } ?: t("Tap a star to see when you earned it", "Ne zaman kazandığını görmek için bir yıldıza dokun"),
+                        } ?: t("Tap a star to see when it lit up ✨", "Ne zaman yandığını görmek için bir yıldıza dokun ✨"),
                         style = TextStyle(fontSize = 13.sp), color = colors.star.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
                     )
@@ -262,8 +262,8 @@ private fun Sky(
     val measurer = rememberTextMeasurer()
     val drawn = remember { ArrayList<DrawnStar>() }
     val emptyText = if (monday == StarMath.weekStart(today))
-        t("Finish a focus session to light your first star", "İlk yıldızını yakmak için bir odak seansı bitir")
-        else t("No stars this week", "Bu hafta yıldız yok")
+        t("The sky's a little empty… shall we light the first star? 🌙", "Gökyüzü biraz boş… ilk yıldızı yakalım mı? 🌙")
+        else t("A quiet week in the sky 🌙", "Gökyüzü bu hafta sessizdi 🌙")
     Canvas(
         Modifier
             .fillMaxWidth()
@@ -320,14 +320,17 @@ private fun Sky(
                 drawn += DrawnStar(p.x, p.y, session)
             }
         }
-        if (!any) label(measurer, emptyText, w / 2, skyH / 2 - 8.dp.toPx(),
-            TextStyle(color = colors.star.copy(alpha = 0.75f), fontSize = 13.sp))
+        if (!any) label(measurer, emptyText, w / 2, skyH / 2 - 16.dp.toPx(),
+            TextStyle(color = colors.star.copy(alpha = 0.75f), fontSize = 13.sp, textAlign = TextAlign.Center),
+            maxWidth = (w - 64.dp.toPx()).toInt())
     }
 }
 
 private fun DrawScope.label(
     measurer: androidx.compose.ui.text.TextMeasurer, text: String, cx: Float, top: Float, style: TextStyle,
+    maxWidth: Int = Int.MAX_VALUE,   // wraps onto more lines past this
 ) {
-    val layout = measurer.measure(text, style)
+    val layout = measurer.measure(text, style,
+        constraints = androidx.compose.ui.unit.Constraints(maxWidth = maxWidth.coerceAtLeast(1)))
     drawText(layout, topLeft = Offset(cx - layout.size.width / 2f, top))
 }

@@ -55,7 +55,8 @@ class PairDialog(Adw.Dialog):
         self._status = Gtk.Label(css_classes=["dim-label"], wrap=True, justify=Gtk.Justification.CENTER)
         box.append(self._status)
         box.append(Gtk.Label(
-            label=t("Both need to be on the same network.", "İkisi de aynı ağda olmalı."),
+            label=t("Both need to be on the same Wi-Fi (or the phone's hotspot) 📶",
+                    "İkisi aynı Wi-Fi'de (ya da telefonun hotspot'unda) olmalı 📶"),
             css_classes=["dim-label", "caption"], wrap=True,
         ))
 
@@ -86,10 +87,10 @@ class PairDialog(Adw.Dialog):
         phones = self._sync.phones
         new = [p for p in phones if p not in self._known]
         if new:
-            self._status.set_markup(t("<b>Paired with {}</b> ✓", "<b>{} ile eşleşti</b> ✓").format(GLib.markup_escape_text(new[0])))
+            self._status.set_markup(t("<b>Paired with {}!</b> 🎉", "<b>{} ile eşleştin!</b> 🎉").format(GLib.markup_escape_text(new[0])))
             self._status.remove_css_class("dim-label")
             self._status.add_css_class("success")
         elif phones:
-            self._status.set_label(t("Connected: {}", "Bağlı: {}").format(", ".join(phones)))
+            self._status.set_label(t("Connected with {} 💞", "{} ile bağlı 💞").format(", ".join(phones)))
         else:
-            self._status.set_label(t("Waiting for the phone…", "Telefon bekleniyor…"))
+            self._status.set_label(t("Waiting for your phone… 📱", "Telefonunu bekliyorum… 📱"))

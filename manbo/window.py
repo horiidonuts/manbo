@@ -8,7 +8,7 @@ from .mini import MiniWindow
 from .timedisplay import TimeDisplay
 from .sounds import CHIME_STARTS
 from .themes import palette
-from .i18n import lower, t, upper
+from .i18n import t, upper
 from .timer import FOCUS, LONG, SHORT
 
 
@@ -36,12 +36,20 @@ RAISE_BEFORE_END_MS = 1000
 HANDOFF_MS = 500
 
 
-def notify_text(mode):
-    return {
-        FOCUS: t("Focus session done", "Odak seansı bitti"),
-        SHORT: t("Break is over", "Mola bitti"),
-        LONG: t("Long break is over", "Uzun mola bitti"),
-    }[mode]
+def notify_text(finished, nxt):
+    """Title and body of the session-end notification."""
+    title = {
+        FOCUS: t("Yay, another star! 🌟", "Yaşasın, bir yıldız daha! 🌟"),
+        SHORT: t("Break's over! ✨", "Mola bitti! ✨"),
+        LONG: t("Long break's over! 🌸", "Uzun mola bitti! 🌸"),
+    }[finished]
+    if finished != FOCUS:
+        body = t("Ready to shine again?", "Hadi yine parlayalım!")
+    elif nxt == LONG:
+        body = t("Long break time~ you earned it 🍵", "Uzun mola zamanı~ hak ettin 🍵")
+    else:
+        body = t("Break time~ stretch a little ☁️", "Mola zamanı~ biraz gerin ☁️")
+    return title, body
 
 
 class ManboWindow(Adw.ApplicationWindow):
@@ -274,8 +282,9 @@ class ManboWindow(Adw.ApplicationWindow):
         self._ending_hold = GLib.timeout_add(KEEP_AWAKE_AFTER_END_MS, self._release_ending)
         self.play_chime()
         if not self.is_active() and not self.mini_shown:  # the always-on-top pill shows it already
-            note = Gio.Notification.new(notify_text(finished))
-            note.set_body(t("Next up: {}.", "Sırada: {}.").format(lower(mode_name(nxt))))
+            title, body = notify_text(finished, nxt)
+            note = Gio.Notification.new(title)
+            note.set_body(body)
             # Urgent = "critical" urgency, which Do Not Disturb lets through
             # (KDE: on by default; GNOME shows urgent ones too). The user turns
             # DND on to focus — the end-of-session alert must still arrive.

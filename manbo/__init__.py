@@ -8,4 +8,4 @@ gi.require_version("PangoCairo", "1.0")
 
 APP_ID = "io.github.horiidonuts.Manbo"
 APP_NAME = "Manbo"
-VERSION = "0.7.0"
+VERSION = "0.7.1"

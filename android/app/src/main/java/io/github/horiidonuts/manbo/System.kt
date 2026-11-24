@@ -110,7 +110,8 @@ object Notifications {
         val n = NotificationCompat.Builder(context, CH_TIMER)
             .setSmallIcon(R.drawable.ic_stat_manbo)
             .setContentTitle(s.mode.label)
-            .setContentText(t("Ends at $endsAt", "Bitiş: $endsAt"))
+            .setContentText(if (s.mode == Mode.FOCUS) t("Focusing till $endsAt 🌱", "Odak · bitiş $endsAt 🌱")
+                else t("Resting till $endsAt ☁️", "Mola · bitiş $endsAt ☁️"))
             .setWhen(s.endAt)
             .setShowWhen(true)
             .setUsesChronometer(true)
@@ -133,9 +134,14 @@ object Notifications {
 
     fun sessionEndNotification(context: Context, finished: Mode, next: Mode): Notification {
         val title = when (finished) {
-            Mode.FOCUS -> t("Focus session done", "Odak seansı bitti")
-            Mode.SHORT -> t("Break is over", "Mola bitti")
-            Mode.LONG -> t("Long break is over", "Uzun mola bitti")
+            Mode.FOCUS -> t("Yay, another star! 🌟", "Yaşasın, bir yıldız daha! 🌟")
+            Mode.SHORT -> t("Break's over! ✨", "Mola bitti! ✨")
+            Mode.LONG -> t("Long break's over! 🌸", "Uzun mola bitti! 🌸")
+        }
+        val body = when {
+            finished != Mode.FOCUS -> t("Ready to shine again?", "Hadi yine parlayalım!")
+            next == Mode.LONG -> t("Long break time~ you earned it 🍵", "Uzun mola zamanı~ hak ettin 🍵")
+            else -> t("Break time~ stretch a little ☁️", "Mola zamanı~ biraz gerin ☁️")
         }
         val start = when (next) {
             Mode.FOCUS -> t("Start focus", "Odağı başlat")
@@ -145,7 +151,7 @@ object Notifications {
         val n = NotificationCompat.Builder(context, CH_END)
             .setSmallIcon(R.drawable.ic_stat_manbo)
             .setContentTitle(title)
-            .setContentText(t("Next up: ${next.label.lowercase(Lang.locale)}.", "Sırada: ${next.label.lowercase(Lang.locale)}."))
+            .setContentText(body)
             .setCategory(Notification.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
@@ -157,10 +163,10 @@ object Notifications {
 
     fun syncNotification(context: Context, st: SyncLink.Status): Notification {
         val text = when (st.state) {
-            SyncLink.State.CONNECTED -> t("Synced with ${st.pc}", "${st.pc} ile senkron")
-            SyncLink.State.NO_PERMISSION -> t("Allow \"Nearby devices\" to sync with your PC",
-                "Bilgisayarınla senkron için \"Yakındaki cihazlar\" iznini ver")
-            else -> t("Looking for ${st.pc.ifEmpty { "your PC" }}…", "${st.pc.ifEmpty { "Bilgisayarın" }} aranıyor…")
+            SyncLink.State.CONNECTED -> t("In sync with ${st.pc} 💞", "${st.pc} ile senkron 💞")
+            SyncLink.State.NO_PERMISSION -> t("Allow \"Nearby devices\" so I can find your PC 🙏",
+                "Bilgisayarını bulabilmem için \"Yakındaki cihazlar\" iznini ver 🙏")
+            else -> t("Looking for ${st.pc.ifEmpty { "your PC" }} 🔍", "${st.pc.ifEmpty { "Bilgisayarını" }} arıyorum 🔍")
         }
         return NotificationCompat.Builder(context, CH_SYNC)
             .setSmallIcon(R.drawable.ic_stat_manbo)

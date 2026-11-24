@@ -43,9 +43,3 @@ def upper(text):
     if turkish():
         text = text.replace("i", "İ")
     return text.upper()
-
-
-def lower(text):
-    if turkish():
-        text = text.replace("I", "ı").replace("İ", "i")
-    return text.lower()

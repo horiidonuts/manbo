@@ -90,8 +90,8 @@ class MainActivity : ComponentActivity() {
         SyncLink.restart()
         val code = pendingCode.also { pendingCode = null }
         when {
-            !granted -> toast(t("Manbo needs \"Nearby devices\" to find your PC",
-                "Manbo'nun bilgisayarını bulması için \"Yakındaki cihazlar\" izni gerekiyor"))
+            !granted -> toast(t("I need \"Nearby devices\" to find your PC 🙏",
+                "Bilgisayarını bulmam için \"Yakındaki cihazlar\" izni lazım 🙏"))
             code != null -> usePairingCode(code)
             else -> scanPairingCode()
         }
@@ -110,8 +110,8 @@ class MainActivity : ComponentActivity() {
             .addOnSuccessListener { code -> code.rawValue?.let(::usePairingCode) }
             .addOnFailureListener {
                 // no Google Play services (or the scanner won't load): the camera app works too
-                toast(t("Couldn't open the scanner. Scan the code with your camera app instead.",
-                    "Tarayıcı açılamadı. Kodu kamera uygulamasıyla tara."))
+                toast(t("Oops, the scanner didn't open 😅 Scan the code with your camera app instead.",
+                    "Hay aksi, tarayıcı açılmadı 😅 Kodu kamera uygulamasıyla tara."))
             }
     }
 
@@ -121,7 +121,7 @@ class MainActivity : ComponentActivity() {
             askLocalNetwork.launch(LOCAL_NETWORK)
             return
         }
-        if (SyncStore.pair(code) == null) return toast(t("That isn't a Manbo pairing code", "Bu bir Manbo eşleştirme kodu değil"))
+        if (SyncStore.pair(code) == null) return toast(t("Hmm, that's not a Manbo code 🤔", "Hmm, bu bir Manbo kodu değil 🤔"))
         SyncLink.restart()
         SyncService.update(this)
     }
@@ -133,8 +133,8 @@ class MainActivity : ComponentActivity() {
         val name = android.net.Uri.parse(code).getQueryParameter("name") ?: t("this computer", "bu bilgisayar")
         android.app.AlertDialog.Builder(this)
             .setTitle(t("Pair with $name?", "$name ile eşleşilsin mi?"))
-            .setMessage(t("Manbo will keep its timer in step with Manbo on $name.",
-                "Manbo, zamanlayıcısını $name üzerindeki Manbo ile senkron tutacak."))
+            .setMessage(t("Your timers will tick together: start on one, the other follows ✨",
+                "İki zamanlayıcı birlikte işler: birinde başlat, öbürü de başlasın ✨"))
             .setPositiveButton(t("Pair", "Eşleştir")) { _, _ -> usePairingCode(code) }
             .setNegativeButton(t("Cancel", "İptal"), null)
             .show()

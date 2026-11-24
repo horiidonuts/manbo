@@ -215,11 +215,11 @@ class PreferencesDialog(Adw.PreferencesDialog):
     def _update_phone(self):
         phones = self._sync.phones
         if phones:
-            subtitle = t("Connected: {}", "Bağlı: {}").format(", ".join(phones))
+            subtitle = t("Connected with {} 💞", "{} ile bağlı 💞").format(", ".join(phones))
         elif self._sync.paired:
-            subtitle = t("Paired, phone not connected right now", "Eşleşmiş, telefon şu an bağlı değil")
+            subtitle = t("Paired 💞 the phone isn't around right now", "Eşleşmiş 💞 telefon şu an ortalıkta yok")
         else:
-            subtitle = t("Scan a code with the Manbo app", "Manbo uygulamasıyla kodu tara")
+            subtitle = t("Scan the code with Manbo on your phone 📱", "Telefondaki Manbo ile kodu tara 📱")
         self._phone_row.set_subtitle(subtitle)
         self._forget_row.set_visible(self._sync.paired)
 

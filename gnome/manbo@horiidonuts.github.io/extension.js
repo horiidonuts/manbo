@@ -178,7 +178,7 @@ class ManboIndicator extends PanelMenu.Button {
         if (!s) {
             this._label.text = '--:--';
             this.add_style_class_name('manbo-offline');
-            this._header.label.text = t('Manbo isn\'t running', 'Manbo çalışmıyor');
+            this._header.label.text = t('Manbo\'s napping 💤', 'Manbo uyuyor 💤');
             this._toggleItem.visible = this._resetItem.visible = false;
             for (const item of Object.values(this._modeItems))
                 item.visible = false;

@@ -145,7 +145,7 @@ Rectangle {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 14 * card.s
         visible: !card.widget.connected
-        text: card.widget.t("Manbo isn't running · click to open", "Manbo çalışmıyor · açmak için tıkla")
+        text: card.widget.t("Manbo's napping 💤 click to wake it", "Manbo uyuyor 💤 uyandırmak için tıkla")
         color: card.textColor
         font.family: card.fontFamily
         font.pixelSize: 12 * card.s

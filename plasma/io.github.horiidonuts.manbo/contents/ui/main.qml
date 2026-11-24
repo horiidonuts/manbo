@@ -147,7 +147,7 @@ PlasmoidItem {
     Plasmoid.icon: "io.github.horiidonuts.Manbo"
     Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
     toolTipMainText: connected ? "Manbo · " + modeNames[mode] : "Manbo"
-    toolTipSubText: !connected ? t("Not running — click to open", "Çalışmıyor — açmak için tıkla")
+    toolTipSubText: !connected ? t("Manbo's napping 💤 click to wake it", "Manbo uyuyor 💤 uyandırmak için tıkla")
         : turkish ? (running ? "Çalışıyor" : "Duraklatıldı") + " · " + timeText + " kaldı · odak seansı "
                     + cyclePosition + "/" + interval
         : (running ? "Running" : "Paused") + " · " + timeText + " left · "

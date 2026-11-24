@@ -1,5 +1,5 @@
 Name:           manbo
-Version:        0.7.0
+Version:        0.7.1
 Release:        1%{?dist}
 Summary:        A tiny pastel Pomodoro timer
 License:        MIT AND LicenseRef-Splice-Sounds
@@ -54,6 +54,10 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{app_id}.desktop
 %{_datadir}/gnome-shell/extensions/manbo@horiidonuts.github.io/
 
 %changelog
+* Tue Nov 24 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.7.1-1
+- Cheerful messages: session-end notifications, the empty sky, phone sync
+  and pairing, the widget and top bar while Manbo is closed
+
 * Tue Nov 24 2026 horiidonuts <horiidonuts@users.noreply.github.com> - 0.7.0-1
 - Turkish: Preferences → Language (System / English / Türkçe), also in the
   Plasma widget and the GNOME top bar
