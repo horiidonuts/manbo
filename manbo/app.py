@@ -138,6 +138,8 @@ class ManboApplication(Adw.Application):
 
 
 def main(argv=None):
+    # the journal gets each line when it happens, not all of them at exit
+    sys.stdout.reconfigure(line_buffering=True)
     # No display (e.g. D-Bus activation from a session that didn't export
     # WAYLAND_DISPLAY/DISPLAY): say so and exit instead of crashing halfway.
     if not Gtk.init_check():

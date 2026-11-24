@@ -9,7 +9,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
+import android.net.LinkProperties
 import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.Uri
 import android.provider.Settings as AndroidSettings
 import android.util.Base64
@@ -36,6 +39,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.net.DatagramPacket
 import java.net.DatagramSocket
+import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -46,6 +50,13 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 private const val HISTORY_CHUNK = 250   // sessions per history message, well under the PC's line limit
+private const val PORT = 47250
+private const val PING_MS = 30_000L     // the PC answers each ping...
+private const val SILENCE_MS = 75_000   // ...so this long without a word means it's gone
+private const val SWEEP_MIN_PREFIX = 22 // ask every address on networks up to /22 (1022 hosts)
+private const val MAX_BACKOFF_MS = 30_000L
+// hotspot (Samsung: swlan0), USB and Bluetooth tethering; not rmnet (mobile data) or tun (VPN)
+private val TETHER_PREFIXES = listOf("swlan", "ap", "softap", "wlan", "rndis", "usb", "ncm", "bt-pan", "eth")
 
 // Sync with Manbo on a PC over the LAN. The PC is the server (manbo/sync.py has the protocol);
 // the phone pairs by scanning its QR code and then keeps connecting to it.
@@ -152,6 +163,12 @@ object SyncLink {
     @Volatile private var socket: Socket? = null
     private val wake = Channel<Unit>(Channel.CONFLATED)
     private var watchingNetwork = false
+    @Volatile private var backoff = 3_000L
+
+    /** Wi-Fi/Ethernet networks we're on, newest last. The PC is on one of them, not on mobile data. */
+    private val lans = LinkedHashMap<Network, LinkProperties?>()
+    /** The LAN [socket] was opened on (network + its addresses): changes mean reconnect. */
+    @Volatile private var socketLan: String? = null
 
     /** [who] (the screen, the background service) wants the link up. */
     @Synchronized
@@ -186,16 +203,56 @@ object SyncLink {
     private fun watchNetwork() {
         if (watchingNetwork) return
         watchingNetwork = true
-        app.getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(
-            object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) { wake.trySend(Unit) }   // e.g. back on Wi-Fi
-            })
+        val cm = app.getSystemService(ConnectivityManager::class.java)
+        // Wi-Fi without internet still counts: that's where the PC is. The default network may then
+        // be mobile data, which can't reach it, so LAN sockets are bound to the Wi-Fi network itself.
+        val request = NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
+            .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        synchronized(lans) {   // what we're on now, so the first callbacks aren't news
+            @Suppress("DEPRECATION")
+            for (n in cm.allNetworks) {
+                val caps = cm.getNetworkCapabilities(n) ?: continue
+                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
+                    lans[n] = cm.getLinkProperties(n)
+            }
+        }
+        cm.registerNetworkCallback(request, object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) = lanChanged { lans[network] = cm.getLinkProperties(network) }
+            override fun onLinkPropertiesChanged(network: Network, lp: LinkProperties) = lanChanged { lans[network] = lp }
+            override fun onLost(network: Network) = lanChanged { lans.remove(network) }
+        })
+        // the default network too: a VPN coming up changes the way to a Tailscale address
+        cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) { backoff = 3_000; wake.trySend(Unit) }
+        })
+    }
+
+    /** Joined, left or got a new address on a Wi-Fi network: drop a link made on the old one and look again. */
+    private fun lanChanged(change: () -> Unit) {
+        val (before, now) = synchronized(lans) { lanKey().let { b -> change(); b to lanKey() } }
+        if (before == now) return
+        backoff = 3_000
+        wake.trySend(Unit)
+        val s = socket
+        if (s != null && socketLan != now) {
+            Log.i(TAG, "network changed, reconnecting")
+            runCatching { s.close() }
+        }
+    }
+
+    private fun lan(): Pair<Network, LinkProperties?>? = synchronized(lans) { lans.entries.lastOrNull()?.toPair() }
+
+    private fun lanKey(): String? = lan()?.let { (n, lp) ->
+        "$n|" + lp?.linkAddresses?.map { it.address }?.filterIsInstance<Inet4Address>()?.joinToString(",")
     }
 
     private suspend fun sleep(ms: Long) { withTimeoutOrNull(ms) { wake.receive() } }
 
     private suspend fun loop() {
-        var backoff = 3_000L
+        backoff = 3_000L
         while (currentCoroutineContext().isActive) {
             val p = SyncStore.pairing.value ?: run { _status.value = Status(State.UNPAIRED); return }
             if (!hasLocalNetwork(app)) {
@@ -207,11 +264,12 @@ object SyncLink {
             val s = connect(p)
             if (s == null) {
                 sleep(backoff)
-                backoff = minOf(backoff * 2, 60_000)
+                backoff = minOf(backoff * 2, MAX_BACKOFF_MS)
                 continue
             }
             backoff = 3_000
             socket = s
+            Log.i(TAG, "connected to ${p.name} at ${s.inetAddress.hostAddress}")
             try {
                 session(s, p)
             } catch (e: Exception) {
@@ -226,36 +284,127 @@ object SyncLink {
     }
 
     private fun connect(p: Pairing): Socket? {
-        for (address in p.addresses) tryConnect(address, p.port)?.let { return it }
-        val (address, port) = discover(p) ?: return null
-        return tryConnect(address, port)?.also { SyncStore.worked(address, port) }
+        val key = lanKey()
+        val lan = lan()
+        val tether = tetherSubnets(lan?.second?.interfaceName)
+        for (address in p.addresses) tryConnect(address, p.port, lan?.first, tether)?.let { socketLan = key; return it }
+        val (address, port) = discover(p, lan, tether) ?: return null
+        return tryConnect(address, port, lan?.first, tether)?.also { socketLan = key }
     }
 
-    private fun tryConnect(address: String, port: Int): Socket? = try {
-        Socket().apply {
-            connect(InetSocketAddress(address, port), 2_500)
-            tcpNoDelay = true
-            keepAlive = true
-        }.also { SyncStore.worked(address, port) }
+    /** A Tailscale-style (100.64.0.0/10) address goes through the VPN, i.e. the default network. */
+    private fun isCgnat(address: String) = address.split('.').let {
+        it.size == 4 && it[0] == "100" && (it[1].toIntOrNull() ?: 0) in 64..127
+    }
+
+    /**
+     * LAN addresses go out on the Wi-Fi network; Tailscale ones and the PC on this phone's hotspot
+     * through an unbound socket (Android routes those: the VPN, and its local_network table).
+     */
+    private fun tryConnect(address: String, port: Int, lan: Network?, tether: List<Subnet>): Socket? = try {
+        val viaLan = lan != null && !isCgnat(address) && tether.none { address in it }
+        val s = if (viaLan) lan!!.socketFactory.createSocket() else Socket()
+        try {
+            s.connect(InetSocketAddress(address, port), 2_500)
+            s.tcpNoDelay = true
+            s.keepAlive = true
+        } catch (e: Exception) {
+            runCatching { s.close() }
+            throw e
+        }
+        SyncStore.worked(address, port)
+        s
     } catch (e: Exception) {
         null
     }
 
-    /** Ask the LAN where the PC is now (its address may have changed since pairing). */
-    private fun discover(p: Pairing): Pair<String, Int>? = try {
+    /** An IPv4 network one of our interfaces is on. */
+    class Subnet(private val ip: Int, private val prefix: Int) {
+        private val mask = if (prefix == 0) 0 else -1 shl (32 - prefix)
+        private val net = ip and mask
+        val broadcast: InetAddress get() = ipv4(net or mask.inv())
+        /** Everyone else on it, if it's small enough to ask one by one. */
+        val others: List<InetAddress>
+            get() = if (prefix !in SWEEP_MIN_PREFIX..30) emptyList()
+                else (net + 1 until (net or mask.inv())).filter { it != ip }.map(::ipv4)
+
+        operator fun contains(address: String): Boolean {
+            val a = runCatching { InetAddress.getByName(address) }.getOrNull() as? Inet4Address ?: return false
+            return toInt(a) and mask == net
+        }
+
+        companion object {
+            fun of(a: InetAddress?, prefix: Int) = (a as? Inet4Address)?.let { Subnet(toInt(it), prefix.toInt()) }
+            private fun toInt(a: Inet4Address) = a.address.fold(0) { acc, b -> (acc shl 8) or (b.toInt() and 0xff) }
+            private fun ipv4(v: Int): InetAddress = InetAddress.getByAddress(
+                byteArrayOf((v ushr 24).toByte(), (v ushr 16).toByte(), (v ushr 8).toByte(), v.toByte()))
+        }
+    }
+
+    /**
+     * Networks this phone serves: its hotspot (and USB/Bluetooth tethering). Android doesn't list them
+     * as networks, so they come from the interfaces. Mobile data and VPNs are left out by name.
+     */
+    private fun tetherSubnets(wifiInterface: String?): List<Subnet> = runCatching {
+        java.net.NetworkInterface.getNetworkInterfaces().toList()
+            .filter { it.isUp && !it.isLoopback && it.name != wifiInterface &&
+                TETHER_PREFIXES.any(it.name::startsWith) }
+            .flatMap { i -> i.interfaceAddresses.mapNotNull { Subnet.of(it.address, it.networkPrefixLength.toInt()) } }
+    }.getOrDefault(emptyList())
+
+    /**
+     * Ask around where the PC is now (its address changes with the network, or when the router hands
+     * out a new one): on the Wi-Fi network, and on this phone's hotspot. Plenty of routers drop
+     * broadcasts between devices, so besides the broadcast this asks every address directly: a few KB.
+     */
+    private fun discover(p: Pairing, lan: Pair<Network, LinkProperties?>?, tether: List<Subnet>): Pair<String, Int>? {
+        val all = InetAddress.getByName("255.255.255.255")
+        if (lan != null) {
+            val subnets = lan.second?.linkAddresses.orEmpty().mapNotNull { Subnet.of(it.address, it.prefixLength) }
+            ask(p, lan.first, listOf(all) + subnets.map { it.broadcast }, subnets.flatMap { it.others })?.let { return it }
+        }
+        if (tether.isNotEmpty() || lan == null) {
+            val b = tether.map { it.broadcast } + if (lan == null) listOf(all) else emptyList()
+            ask(p, null, b, tether.flatMap { it.others })?.let { return it }
+        }
+        return null
+    }
+
+    private fun ask(p: Pairing, network: Network?, broadcasts: List<InetAddress>, hosts: List<InetAddress>): Pair<String, Int>? = try {
         DatagramSocket().use { udp ->
+            network?.bindSocket(udp)
             udp.broadcast = true
-            udp.soTimeout = 1_500
             val ask = JSONObject().put("t", "find").put("id", p.pcId).toString().toByteArray()
-            udp.send(DatagramPacket(ask, ask.size, InetAddress.getByName("255.255.255.255"), 47250))
+            fun send(to: List<InetAddress>) {
+                for (a in to) runCatching { udp.send(DatagramPacket(ask, ask.size, a, PORT)) }
+            }
             val buf = ByteArray(1024)
             val packet = DatagramPacket(buf, buf.size)
-            udp.receive(packet)
-            val reply = JSONObject(String(packet.data, 0, packet.length))
-            if (reply.optString("t") == "here" && reply.optString("id") == p.pcId)
-                packet.address.hostAddress!! to reply.getInt("port") else null
+            // Wi-Fi loses packets: a second round (broadcasts only, the sweep is already out there)
+            for (round in 0..1) {
+                send(if (round == 0) broadcasts + hosts else broadcasts)
+                val until = System.currentTimeMillis() + 1_500
+                while (true) {
+                    val left = until - System.currentTimeMillis()
+                    if (left <= 0) break
+                    udp.soTimeout = left.toInt()
+                    packet.length = buf.size   // receive() shrinks it to the last packet
+                    try {
+                        udp.receive(packet)
+                    } catch (e: java.net.SocketTimeoutException) {
+                        break
+                    }
+                    val reply = runCatching { JSONObject(String(packet.data, 0, packet.length)) }.getOrNull() ?: continue
+                    if (reply.optString("t") == "here" && reply.optString("id") == p.pcId) {
+                        Log.i(TAG, "found ${p.name} at ${packet.address.hostAddress}")
+                        return@use packet.address.hostAddress!! to reply.getInt("port")
+                    }
+                }
+            }
+            null
         }
     } catch (e: Exception) {
+        Log.i(TAG, "discovery failed: $e")
         null
     }
 
@@ -282,7 +431,7 @@ object SyncLink {
             return
         }
         send(JSONObject().put("t", "auth").put("proof", proof(p.key, "phone", n1, n2)))
-        s.soTimeout = 150_000   // the PC answers each ping, so silence this long means it's gone
+        s.soTimeout = SILENCE_MS
         // our stars, all of them once (the PC merges them with its own and sends us its own)
         for (chunk in HistoryStore.sessions.value.chunked(HISTORY_CHUNK)) send(historyMessage(chunk))
 
@@ -307,7 +456,7 @@ object SyncLink {
             val pinger = launch {
                 try {
                     while (isActive) {
-                        delay(60_000)
+                        delay(PING_MS)
                         send(JSONObject().put("t", "ping"))
                     }
                 } catch (e: Exception) {
